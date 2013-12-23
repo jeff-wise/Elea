@@ -1,0 +1,46 @@
+
+name:           Elea
+      
+version:        0.0.1
+
+license:        All Rights Reserved
+license-file:   LICENSE
+
+author:         Jeff Wise <jeff.scott.wise@gmail.com>
+maintainer:     Jeff Wise <jeff.scott.wise@gmail.com>
+
+synopsis:       Framework for construction of universes
+description:	TODO
+
+category:       Language
+
+stability:      Experimental
+
+cabal-version:  >= 1.6
+
+build-type:     Simple
+
+homepage:    	http://elea-framework.com/
+
+		
+Library
+
+    hs-source-dirs:     src/lib
+
+    exposed-modules:    Lang.Type.IsType
+
+    build-depends:  	base ==4.6.* 
+
+    extensions:		DeriveGeneric, NoImplicitPrelude
+
+
+Test-Suite tests
+
+    type:               exitcode-stdio-1.0
+    ghc-options:        -Wall
+    hs-source-dirs:     src/test
+    main-is:            Main.hs
+    default-language:   Haskell2010
+    build-depends:      base ==4.6.*, Cabal >= 1.16.0 
+
+
