@@ -3,7 +3,8 @@ name:           Elea
       
 version:        0.0.1
 
-license:        All Rights Reserved
+license:        AllRightsReserved
+
 license-file:   LICENSE
 
 author:         Jeff Wise <jeff.scott.wise@gmail.com>
@@ -16,7 +17,7 @@ category:       Language
 
 stability:      Experimental
 
-cabal-version:  >= 1.6
+cabal-version:  >= 1.8
 
 build-type:     Simple
 
@@ -26,21 +27,60 @@ homepage:    	http://elea-framework.com/
 Library
 
     hs-source-dirs:     src/lib
+    
+    ghc-options:        -Wall -fno-warn-orphans -fno-warn-incomplete-patterns
+                        -fno-warn-missing-signatures
 
-    exposed-modules:    Lang.Type.IsType
+    exposed-modules:    Elea.Lang.Type,
+                        Elea.Lang.Types,
+                        Elea.Lang.Lens
+                        Elea.Lang.Val,
+                        Elea.Lang.Synthesis,
+                        Elea.Lang.Apply,
+                        Elea.Lang.Constructor
 
-    build-depends:  	base ==4.6.* 
+    other-modules:      Elea.Prelude
 
-    extensions:		DeriveGeneric, NoImplicitPrelude
+    build-depends:  	base ==4.6.*,
+                        containers,
+                        unordered-containers,
+                        text,
+                        bytestring,
+                        stream-fusion,
+                        time,
+                        lens,
+                        hashable,
+                        mtl,
+                        errors
+              
+
+    extensions:		NoImplicitPrelude, OverloadedStrings, UnicodeSyntax,
+                        FlexibleInstances, TemplateHaskell
 
 
-Test-Suite tests
+Executable testsuite
 
-    type:               exitcode-stdio-1.0
-    ghc-options:        -Wall
+
     hs-source-dirs:     src/test
-    main-is:            Main.hs
-    default-language:   Haskell2010
-    build-depends:      base ==4.6.*, Cabal >= 1.16.0 
 
+    main-is:            Test/Main.hs
+
+    other-modules:      Test.Prelude,
+                        Test.Gen.Val
+    
+
+    build-depends:      base ==4.6.*,
+                        Elea,
+                        tasty-hunit,
+                        tasty,
+                        containers,
+                        unordered-containers,
+                        tuple,
+                        mtl,
+                        QuickCheck
+
+
+    ghc-options:        -Wall -fno-warn-missing-signatures
+
+    extensions:         OverloadedStrings, UnicodeSyntax
 

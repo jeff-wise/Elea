@@ -18,8 +18,6 @@ module Elea.Prelude
     , for
     , Prelude.const
     , Prelude.error
-    , putStrLn
-    , getArgs
     , Prelude.odd
     , Prelude.even
     , Prelude.uncurry
@@ -34,7 +32,7 @@ module Elea.Prelude
     , Prelude.Eq (..)
     , Prelude.Bounded (..)
     , Prelude.Enum (..)
-    , Prelude.Show
+    , Prelude.Show (..)
     , Prelude.Read
     , Prelude.Functor (..)
     , Prelude.Monad (..)
@@ -55,28 +53,15 @@ module Elea.Prelude
     , Prelude.Char
     , Prelude.IO
     , Prelude.Either (..)
-      -- * Re-exports
-      -- ** Packed reps
-    , ByteString
-    , LByteString
-    , LText
       -- ** Containers
-    , Map
     , HashMap
     , HashSet
     , Seq
-    , Vector
-    , UVector
-    , Unbox
     , Hashable
       -- ** Numbers
-    , Word
-    , Word8
-    , Word32
-    , Word64
+    , Word, Word8, Word32, Word64
     , Prelude.Int
-    , Int32
-    , Int64
+    , Int32, Int64
     , Prelude.Integer
     , Prelude.Rational
     , Prelude.Float
@@ -90,12 +75,13 @@ module Elea.Prelude
       -- ** Monoids
     , Monoid (..)
     , (<>)
+      -- ** Category
+    , module Control.Category
       -- ** Arrow
     , Control.Arrow.first
     , Control.Arrow.second
     , (Control.Arrow.***)
     , (Control.Arrow.&&&)
-    , module Control.Category
       -- ** Maybe
     , Data.Maybe.mapMaybe
     , Data.Maybe.catMaybes
@@ -111,71 +97,46 @@ module Elea.Prelude
       -- ** Ord
     , Data.Function.on
     , Data.Ord.comparing
-    , GHC.Exts.Down (..)
       -- ** Applicative
     , Control.Applicative.Applicative (..)
     , (Control.Applicative.<$>)
     , (Control.Applicative.<|>)
       -- ** Monad
     , (Control.Monad.>=>)
-      -- ** Transformers
-    , Control.Monad.Trans.Class.lift
-    , Control.Monad.IO.Class.MonadIO
-    , Control.Monad.IO.Class.liftIO
-      -- ** Exceptions
-    , Control.Exception.Exception (..)
-    , Data.Typeable.Typeable (..)
-    , Control.Exception.SomeException
-    , Control.Exception.IOException
-    , Control.Exception.Lifted.throwIO
-    , Control.Exception.Lifted.try
-    , Control.Exception.Lifted.catch
-    , Control.Exception.Lifted.bracket
-    , Control.Exception.Lifted.onException
-    , Control.Exception.Lifted.finally
-      -- ** Files
-    , F.FilePath
-    , (F.</>)
-    , (F.<.>)
-    , F.hasExtension
-    , F.basename
-    , F.filename
-    , F.directory
-      -- ** Strings
+     -- ** Strings
     , Prelude.String
       -- ** Hashing
-    , hash
-    , hashWithSalt
+    , hash, hashWithSalt
       -- ** Print
     , Prelude.print
       -- ** Command line args
-    , readArgs
-    , module Data.List.Stream
     , TimeOfDay, Day
-    , module Control.Lens
+    , (Control.Lens.Getter.^.)
+    , (Control.Lens.Setter..~)
+    , (Control.Lens.Setter.%~)
+    , (Control.Lens.Combinators.&)
+    , Control.Lens.TH.makeLenses
+    , (<|)
+    , viewl
+    , ViewL (..)
+    , (L.++)
     ) where
 
 import qualified Prelude
 import Prelude (Char, Eq, Bool)
 
-import Data.Hashable (Hashable, hash, hashWithSalt, hashUsing)
-import Data.Vector.Unboxed (Unbox)
 
 import Data.Monoid (Monoid (..))
+import Data.Monoid ((<>))
 import qualified Control.Arrow
 import Control.Applicative
 import Control.Category
 import qualified Control.Monad
-import qualified Control.Exception
-import qualified Control.Exception.Lifted
-import qualified Data.Typeable
 
-import qualified Filesystem.Path.CurrentOS as F
 
 import Data.Word (Word8, Word32, Word64, Word)
 import Data.Int (Int32, Int64)
 
-import qualified Data.Text.IO
 
 import qualified Data.Maybe
 import qualified Data.Either
@@ -184,60 +145,41 @@ import qualified Data.Function
 import qualified Data.Tuple
 import qualified Data.String
 
-import qualified Control.Monad.Trans.Class
-import qualified Control.Monad.IO.Class
-import Control.Monad.IO.Class (MonadIO (liftIO))
 
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Lazy
-import qualified Data.Text as T
-import qualified Data.Text.Lazy
-import Data.Vector (Vector)
-import qualified Data.Vector.Unboxed
-import Data.Map (Map)
-import Data.Sequence (Seq)
+-- Hashing
+import Data.Hashable (Hashable, hash, hashWithSalt, hashUsing)
+
+
+-- Lenses
+import qualified Control.Lens.Getter
+import qualified Control.Lens.Setter
+import qualified Control.Lens.Combinators
+import qualified Control.Lens.TH
+
+
+-- Containers
+import Data.Sequence (Seq, (<|), viewl, ViewL (..))
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet  as Set (HashSet, toList)
-import qualified ReadArgs
 
-import qualified System.Environment
-import qualified Data.Text
-import qualified Data.List
-import qualified GHC.Exts
 
+-- Lists
+import Data.List.Stream as L
+
+
+-- Time
 import Data.Time.Calendar (Day(..))
 import Data.Time.LocalTime (TimeOfDay(..))
 
+
+
+-- For added instances/functions
+import qualified Data.Foldable as F
 import Data.Fixed (Fixed, E12, showFixed)
 
 
-import qualified Data.Foldable as F
 
-import Data.Monoid ((<>))
-
--- added imports
-import Data.List.Stream
-
-import Control.Lens
-
-
-for = Prelude.flip map
-
-type LText = Data.Text.Lazy.Text
-type LByteString = Data.ByteString.Lazy.ByteString
-type UVector = Data.Vector.Unboxed.Vector
-
-
-getArgs :: MonadIO m => m [T.Text]
-getArgs = liftIO (Data.List.map Data.Text.pack <$> System.Environment.getArgs)
-
-
-putStrLn :: MonadIO m => T.Text -> m ()
-putStrLn = liftIO . Data.Text.IO.putStrLn
-
-
-readArgs :: (MonadIO m, ReadArgs.ArgumentTuple a) => m a
-readArgs = liftIO ReadArgs.readArgs
+for = Prelude.flip L.map
 
 
 

@@ -19,13 +19,14 @@ get (Lens_Set  setLens ) (Val_Set  set ) = getFromSet   setLens  set
 get (Lens_Pair pairLens) (Val_Pair pair) = getFromPair  pairLens pair
 get (Lens_Arr  arrLens ) (Val_Arr  arr ) = getFromArray arrLens  arr
 get Lens_This             val            = Just val
+get _                    _               = Nothing
 
 
 
 
 getFromSet ∷ SetLens → Set → Maybe Val
 
-getFromSet (AnySuchThat ty lens) =
+getFromSet (AllSuchThat ty lens) =
       _getSet >>> Set.toList >>>            -- 1) filter set by type
       filter (isType ty) >>> return
   >=> (\elemsOfTy → if null elemsOfTy      -- 2) ensure set is non-empty
@@ -36,7 +37,7 @@ getFromSet (AnySuchThat ty lens) =
       catMaybes           >>>               --    return vals found as set
       (Just . Val_Set . Set . Set.fromList)
 
-getFromSet (FstSuchThat ty lens) =
+getFromSet (AnySuchThat ty lens) =
       _getSet >>> Set.toList >>> 
       filter (isType ty) >>> listToMaybe
   >=> get lens

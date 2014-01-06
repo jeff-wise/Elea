@@ -31,32 +31,41 @@ funDict ∷ FunDict
 funDict = HMS.fromList $ [
     ( "SetSize"
     , FunDef  ([Ty_Set AnySet])
-              (Ty_And $ AndTy (Ty_Num Natural) (Ty_Num NonNegative))
+              (Ty_And $ AndTy (Ty_Num Integer) (Ty_Num NonNegative))
               fun_SetSize
+    )
+  , ( "Add"
+    , FunDef ([Ty_Num $ AnyNumber, Ty_Num $ AnyNumber])
+             (Ty_Num $ AnyNumber)
+             fun_Add
     )
   ]
 
 
 
-apply ∷ T.Text → [Val] → Val
+apply ∷ T.Text → [Val] → Either AppError Val
 apply funName paramVals =
   case HMS.lookup funName funDict of
     Just (FunDef paramTys _ fun) →
       let eParams = for (zip paramTys paramVals) (\(ty, val) →
                       if isType ty val
                         then Right val
-                        else Left $ UnexpectedParamType ty val 
+                        else Left $ IncorrectParamType ty val 
                     )
       in  case partitionEithers eParams of
-            ([], params)  → fun params
-            _             → Val_Err $ Err_App $ AppParamError eParams
-    Nothing → Val_Err $ Err_App AppFunNotFound
+            ([], params)  → Right $ fun params
+            _             → Left $ AppParamError eParams
+    Nothing → Left AppFunNotFound
 
 
 
 fun_SetSize ∷ [Val] → Val
 fun_SetSize [Val_Set (Set set)] = Val_Num $ Z $ Set.size set
-fun_SetSize _                   = Val_Err $ Err_App ExecError
+-- TODO use custom exception? throw to handling thread?
+
+
+fun_Add ∷ [Val] → Val
+fun_Add [Val_Num x, Val_Num y] = Val_Num $ x + y
 
 
 

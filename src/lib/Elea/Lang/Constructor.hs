@@ -11,8 +11,10 @@ import Elea.Lang.Types
 -- list comprehension
 
 
+
+
 construct ∷ System → Constructor → Val
-construct _ _ = Val_Num (Z 4)
+construct _ (Con_Val val) = val
 
 {-
 data Query = Query

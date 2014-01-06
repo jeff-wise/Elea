@@ -6,23 +6,6 @@ module Elea.Lang.Relation where
 import Data.HashMap.Lazy as HL
 import Data.Set as S
 
-
--- TODO applications, see equiv relation/binary relation
-
-data RelDef = RelDef
-  { _relName  ∷  Text  -- | Name of relation
-  , _domain   ∷  Text  -- | Name of domain set
-  , _codomain ∷  Text  -- | Name of codomain set
-  }
-
-
-type RelMap = HL.HashMap RelDef Relation
-
-type Relation = HL.HashMap ParticleId [ParticleId]
-
-
-type RelTuple = (ParticleKey, ParticleKey)
-
 {-
 
 -- Have to first create a relation
