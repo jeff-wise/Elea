@@ -32,12 +32,12 @@ synthesize system (Syn synName cons apps
   in  Particle (synth particleId) (synth particleVal)
   where
     -- Evaluate data columns
-    cols = Seq.fromList $ map (construct system) cons
+    cols = Seq.fromList $ fmap (construct system) cons
     -- Get variable result of function application
     runApp ∷ Int → Application → (Val, Val)
     runApp appIdx (App _ params funName resName) =
       let -- Find parameter values in data sources
-          eParams = map getParamVal params
+          eParams = getParamVal <$> params
           -- Create an app error value for this synthesis
           mkErrVal = Val_Err . Err_Syn (Text synName) 
                              . SynAppError (Z appIdx)

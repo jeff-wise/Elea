@@ -10,6 +10,7 @@ import Elea.Lang.Type (isType)
 import Elea.Lang.Val (at)
 
 import qualified Data.HashSet as Set
+import qualified Data.List.Stream as L
 
 
 
@@ -28,18 +29,18 @@ getFromSet ∷ SetLens → Set → Maybe Val
 
 getFromSet (AllSuchThat ty lens) =
       _getSet >>> Set.toList >>>            -- 1) filter set by type
-      filter (isType ty) >>> return
-  >=> (\elemsOfTy → if null elemsOfTy      -- 2) ensure set is non-empty
+      L.filter (isType ty) >>> return
+  >=> (\elemsOfTy → if L.null elemsOfTy    -- 2) ensure set is non-empty
                        then Nothing
                        else Just elemsOfTy
       )
-  >=> map (get lens)      >>>               -- 3) apply lens to each elem and
+  >=> fmap (get lens)     >>>               -- 3) apply lens to each elem and
       catMaybes           >>>               --    return vals found as set
       (Just . Val_Set . Set . Set.fromList)
 
 getFromSet (AnySuchThat ty lens) =
       _getSet >>> Set.toList >>> 
-      filter (isType ty) >>> listToMaybe
+      L.filter (isType ty) >>> listToMaybe
   >=> get lens
 
 

@@ -17,7 +17,7 @@ import Elea.Lang.Type
 
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as Set
-
+import qualified Data.List.Stream as L
 import qualified Data.Text as T
 
 
@@ -47,7 +47,7 @@ apply ∷ T.Text → [Val] → Either AppError Val
 apply funName paramVals =
   case HMS.lookup funName funDict of
     Just (FunDef paramTys _ fun) →
-      let eParams = for (zip paramTys paramVals) (\(ty, val) →
+      let eParams = (flip fmap) (L.zip paramTys paramVals) (\(ty, val) →
                       if isType ty val
                         then Right val
                         else Left $ IncorrectParamType ty val 

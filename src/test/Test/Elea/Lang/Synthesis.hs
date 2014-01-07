@@ -1,13 +1,16 @@
 
 
-module Test.Lang.Synthesis where
+module Test.Elea.Lang.Synthesis where
 
 
 import Test.Prelude
-import Test.Lang.Types
+import qualified Test.Data.System as Sys
 
 import Elea.Lang.Types
 import Elea.Lang.Synthesis
+
+
+import Control.Monad.State.Lazy (runState)
 
 import qualified Data.Sequence as Seq
 
@@ -17,6 +20,14 @@ import qualified Data.Sequence as Seq
 
 tests_Synthesis = testGroup "Synthesis" [ test_syn_2plus2 ]
  
+
+
+addCompSyms = do
+  sum ← newSymbol "Sum"
+  return (sum)
+
+-- Add some symbols to the system
+( (sym_sum), testSystem) = runState addCompSyms Sys.testSystem
 
 
 -- | Synthesize 2 + 2
@@ -34,16 +45,17 @@ test_syn_2plus2 = testCase "2 + 2" $
                       , _appParams  = [ Param 0 Lens_This   -- 2
                                       , Param 1 Lens_This ] -- 2
                       , _appFunName = "Add"
-                      , _resultId   = sym_sum
+                      , _resultId   = Val_Sym $ sym_sum
                       }
                     ]
-      , _synPartT = Particle sym_sum (Val_Var $ Var sym_sum)
+      , _synPartT = Particle (Val_Sym $ sym_sum)
+                             (Val_Var $ Var $ Val_Sym sym_sum)
       })
 
   @?=
 
     -- Should create a "4" particle 
-    Particle sym_sum (Val_Num $ Z 4)
+    Particle (Val_Sym $ sym_sum) (Val_Num $ Z 4)
  
 
 

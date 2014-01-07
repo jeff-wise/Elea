@@ -191,8 +191,7 @@ instance Show Number where
   show (R d) = show d
 
 
-data Symbol = Sym
-  { _symId  ∷  Int }
+data Symbol = Sym Int
   deriving (Eq, Generic)
 
 instance Hashable Symbol
@@ -327,7 +326,7 @@ instance Show Type where
 data SetTy = 
     WithElem      Type
   | WithoutElem   Type
-  | IsSet         [Type]
+--  | IsSet         [Type]
   | SetWithSize   Number
   | AnySet
   deriving (Eq, Generic)
@@ -339,7 +338,7 @@ instance Show SetTy where
     "WithElem of " ++ show ty
   show (SetWithSize size) = 
     "Set with size of " ++ show size
-  show (IsSet set) = "Is " ++ show set
+ -- show (IsSet set) = "Is " ++ show set
   show  AnySet       = "Set"
 
 

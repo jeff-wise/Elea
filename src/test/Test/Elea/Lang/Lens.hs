@@ -1,13 +1,16 @@
 
 
-module Test.Lang.Lens (tests_Lens) where
+module Test.Elea.Lang.Lens (tests_Lens) where
 
+
+
+import Test.Prelude
+import Test.Data.Val
+import Test.Data.System
 
 import Elea.Lang.Lens
 import Elea.Lang.Types
 
-import Test.Prelude
-import Test.Lang.Types
 
 import qualified Data.HashSet as Set
 
@@ -32,7 +35,7 @@ tests_Lens = testGroup "Val Lenses" [
 
   , testCase "First in Pair" $
           get (Lens_Pair $ AtFirst Lens_This) simplePair
-      @?= (Just sym_gold)
+      @?= (Just $ Val_Sym $ sym_rpg^.attr.gold)
   
   , testCase "Second in Pair" $
           get (Lens_Pair $ AtSecond Lens_This) simplePair
@@ -45,7 +48,8 @@ tests_Lens = testGroup "Val Lenses" [
                 (Lens_Pair $ AtFirst Lens_This)
               ) 
               complexPair
-      @?= (Just $ Val_Pair $ Pair (Val_Num $ R 1.11) sym_blue )
+      @?= (Just $ Val_Pair $ Pair (Val_Num $ R 1.11) 
+                                  (Val_Sym $ sym_color^.blue))
 
   , testCase "First in Set, such that is 5" $
           get (Lens_Set $ AnySuchThat (Ty_Num $ IsNumber $ Z 5) 

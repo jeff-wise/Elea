@@ -15,7 +15,6 @@ module Elea.Prelude
     , Prelude.maybe
     , Prelude.either
     , Prelude.flip
-    , for
     , Prelude.const
     , Prelude.error
     , Prelude.odd
@@ -176,10 +175,6 @@ import Data.Time.LocalTime (TimeOfDay(..))
 -- For added instances/functions
 import qualified Data.Foldable as F
 import Data.Fixed (Fixed, E12, showFixed)
-
-
-
-for = Prelude.flip L.map
 
 
 

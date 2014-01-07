@@ -6,9 +6,12 @@ module Elea.Lang.Type where
 
 import Elea.Prelude
 import Elea.Lang.Types
-import Elea.Lang.Val (at)
+import Elea.Lang.Val (at, doubleToInt, isInteger)
 
+import qualified Data.Foldable as F
 import qualified Data.HashSet as Set
+import qualified Data.List.Stream as L
+import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 
 
@@ -55,10 +58,10 @@ isPairType AnyPair           _          = True
 
 
 isSetType ∷ SetTy → Set → Bool
-isSetType (WithElem    ty       ) (Set set) = 
-  or $ map (isType ty) (Set.toList set)
-isSetType (SetWithSize (Z size) ) (Set set) = Set.size set == size
-isSetType (EqToSet     (Set hs) ) (Set set) = set == hs
+isSetType (WithElem    ty      ) (Set set) = 
+  L.or $ L.map (isType ty) (Set.toList set)
+isSetType (SetWithSize (Z size)) (Set set) = Set.size set == size
+-- isSetType (IsSet       elemTys ) (Set set) =
 isSetType AnySet                  _         = True
 isSetType _                       _         = False
 
@@ -72,15 +75,20 @@ isOrType (OrTy ty1 ty2 ) val = isType ty1 val || isType ty2 val
 
 
 isArrType ∷ ArrayTy → Array → Bool
-isArrType (IsArray   (Arr eqArr)) (Arr arr) = arr == eqArr
-isArrType (WithIndex (Z i) ty   ) array = 
+isArrType (IsArray   elemTys ) (Arr arr) =
+  if (Seq.length elemTys) == (Seq.length arr)
+    then  F.foldr (&&) True $
+            (flip fmap) (elemTys `Seq.zip` arr) $
+              (\(ty, elem) → isType ty elem)
+    else False
+isArrType (WithIndex (Z i) ty) array = 
   maybe False (isType ty) $ array `at` i
 isArrType AnyArray          _     = True
 isArrType _                 _     = False
 
 
 isTextType ∷ TextTy → Text → Bool
-isTextType (OfTextLen (Z len)      ) (Text text) = T.length text == len
+isTextType (WithTextLen (Z len)      ) (Text text) = T.length text == len
 isTextType (IsText    (Text isText)) (Text text) = isText == text
 isTextType AnyText                   _           = True
 
@@ -98,13 +106,10 @@ isNumType Integer                   num   = isInteger num
 isNumType NonNegative               (Z i) = i >= 0 
 isNumType NonNegative               (R r) = r >= 0 
 isNumType AnyNumber                 _     = True
--- This matches mostly floats matched against integer types
--- or vice versa
-isNumType _                         _     = False
 
 
 isSymType ∷ SymbolTy → Symbol → Bool
-isSymType (IsSymbol (Sym isSymId)) (Sym symId) = isSymId == symId
+isSymType (IsSymbol isSymbol) symbol = isSymbol == symbol
 
 
 isDtmType ∷ DateTimeTy → DateTime → Bool

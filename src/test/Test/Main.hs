@@ -5,10 +5,11 @@ module Main where
 
 import Test.Prelude
 
-import Test.Lang.Lens (tests_Lens)
-import Test.Lang.Synthesis (tests_Synthesis)
-import Test.Lang.Type (tests_Type)
-import Test.Lang.Val (tests_Val)
+import Test.Elea.Index.Val (tests_ValIndex)
+import Test.Elea.Lang.Lens (tests_Lens)
+import Test.Elea.Lang.Synthesis (tests_Synthesis)
+import Test.Elea.Lang.Type (tests_Type)
+import Test.Elea.Lang.Val (tests_Val)
 
 
 
@@ -27,4 +28,5 @@ unitTests = testGroup "Unit Tests" [
   , tests_Type
   , tests_Val
   , tests_Synthesis
+  , tests_ValIndex
   ]

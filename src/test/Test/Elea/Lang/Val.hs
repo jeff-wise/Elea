@@ -1,10 +1,10 @@
 
 
-module Test.Lang.Val where
+module Test.Elea.Lang.Val where
 
 
 import Test.Prelude
-import Test.Lang.Types
+import Test.Data.System
 
 import Elea.Lang.Val
 import Elea.Lang.Types
@@ -26,15 +26,19 @@ tests_Val = testGroup "Val Tests" [
 tests_Eval = testGroup "Eval" [
                               
     testCase "Simple Eval" $
-          eval (HMS.singleton sym_username (Val_Text $ Text "BroRex123"))
-               (Val_Var $ Var sym_username)
+          eval  (HMS.singleton (Val_Sym $ sym_social^.username) 
+                              (Val_Text $ Text "BroRex123")
+                )
+                (Val_Var $ Var $ Val_Sym $ sym_social^.username)
       @?= (Val_Text $ Text "BroRex123")
 
   , testCase "Eval in Set" $
-          eval  (HMS.singleton sym_username (Val_Text $ Text "BroRex123"))
+          eval  (HMS.singleton  (Val_Sym $ sym_social^.username)
+                                (Val_Text $ Text "BroRex123")
+                )
                 (Val_Set $ Set $ Set.fromList [
                     Val_Num $ Z 5
-                  , Val_Var $ Var sym_username
+                  , Val_Var $ Var $ Val_Sym $ sym_social^.username
                   , Val_Text $ Text "Dinosaurs"
                   ]
                 )
@@ -47,34 +51,40 @@ tests_Eval = testGroup "Eval" [
       
   , testCase "Eval large value" $
           eval  (HMS.fromList [
-                    (sym_health, Val_Num $ Z 49)
-                  , (sym_arcana, Val_Num $ Z 14)
+                    (Val_Sym $ sym_rpg^.attr.health, Val_Num $ Z 49)
+                  , (Val_Sym $ sym_rpg^.attr.gold, Val_Num $ Z 14)
                   ]
                 )
                 (Val_Set $ Set $ Set.fromList [
-                    Val_Pair $ Pair (sym_gold) (Val_Num $ Z 100)
+                    Val_Pair $ Pair (Val_Sym $ sym_rpg^.attr.name) 
+                                    (Val_Text $ Text "Sky")
                   , Val_Pair $ Pair 
-                        (sym_stats) 
+                        (Val_Sym $ sym_rpg^.entity.dragon)
                         (Val_Set $ Set $ Set.fromList [
-                            Val_Pair $ Pair (sym_health) 
-                                            (Val_Var $ Var sym_health)
-                          , Val_Pair $ Pair (sym_arcana)
-                                            (Val_Var $ Var sym_arcana)
+                            Val_Pair $ Pair
+                              (Val_Sym $ sym_rpg^.attr.health) 
+                              (Val_Var $ Var $ Val_Sym $ sym_rpg^.attr.health)
+                          , Val_Pair $ Pair
+                              (Val_Sym $ sym_rpg^.attr.gold)
+                              (Val_Var $ Var $ Val_Sym $ sym_rpg^.attr.gold)
                           ]
                         )
                   ]
                 )
       @?= (Val_Set $ Set $ Set.fromList [
-              Val_Pair $ Pair  (sym_gold) (Val_Num $ Z 100)
+              Val_Pair $ Pair (Val_Sym $ sym_rpg^.attr.name)
+                              (Val_Text $ Text "Sky")
             , Val_Pair $ Pair 
-                    (sym_stats) 
-                    (Val_Set $ Set $ Set.fromList [
-                        Val_Pair $ Pair (sym_health) 
-                                        (Val_Num $ Z 49)
-                      , Val_Pair $ Pair (sym_arcana)
-                                        (Val_Num $ Z 14)
-                      ]
-                    )
+                (Val_Sym $ sym_rpg^.entity.dragon)
+                (Val_Set $ Set $ Set.fromList [
+                        Val_Pair $ Pair
+                          (Val_Sym $ sym_rpg^.attr.health) 
+                          (Val_Num $ Z 49)
+                      , Val_Pair $ Pair
+                          (Val_Sym $ sym_rpg^.attr.gold)
+                          (Val_Num $ Z 14)
+                  ]
+                )
             ]
           )
   ]

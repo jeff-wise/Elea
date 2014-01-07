@@ -37,7 +37,8 @@ Library
                         Elea.Lang.Val,
                         Elea.Lang.Synthesis,
                         Elea.Lang.Apply,
-                        Elea.Lang.Constructor
+                        Elea.Lang.Constructor,
+                        Elea.Index.Val
 
     other-modules:      Elea.Prelude
 
@@ -66,7 +67,12 @@ Executable testsuite
     main-is:            Test/Main.hs
 
     other-modules:      Test.Prelude,
-                        Test.Gen.Val
+                        Test.Elea.Lang.Lens,
+                        Test.Elea.Lang.Val,
+                        Test.Elea.Lang.Type,
+                        Test.Elea.Lang.Synthesis,
+                        Test.Elea.Index.Val
+
     
 
     build-depends:      base ==4.6.*,
@@ -76,11 +82,13 @@ Executable testsuite
                         containers,
                         unordered-containers,
                         tuple,
+                        stream-fusion,
+                        lens,
                         mtl,
                         QuickCheck
 
 
     ghc-options:        -Wall -fno-warn-missing-signatures
 
-    extensions:         OverloadedStrings, UnicodeSyntax
+    extensions:         OverloadedStrings, UnicodeSyntax, TemplateHaskell, NoImplicitPrelude
 

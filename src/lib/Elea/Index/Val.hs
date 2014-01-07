@@ -1,6 +1,11 @@
 
 
-module Elea.Lang.Index.Val where
+module Elea.Index.Val (
+    newValIndex
+  , ValIndex    
+  , lookup
+  , insert
+  ) where
 
 
 import Elea.Prelude
@@ -31,6 +36,18 @@ data ValIndex a = ValIndex
   , _itemMap    ∷ HMS.HashMap MatchKey a
   , _keyCounter ∷ Int
   }
+
+
+
+data Node_Val = Node_Val
+  { _node_Set   ∷  Node_Set
+  , _node_Pair  ∷  Node_Pair
+  , _node_Arr   ∷   Node_Arr
+  , _node_Text  ∷   Node_Text
+  , _node_Num   ∷   Node_Num
+  , _node_Sym   ∷   Node_Sym
+  }
+
 
 
 
@@ -72,7 +89,7 @@ makeLenses ''Node_Val
 -- Constructors
 ---------------------------------------------------------------------
 
-newValIndex ∷ ValIndex
+newValIndex ∷ ValIndex a
 newValIndex = ValIndex
   { _valNode     =  newValNode
   , _itemMap     =  HMS.empty
@@ -173,7 +190,7 @@ insertSym sym key (Node_Sym symMap) = Node_Sym $
 lookup ∷ Type → ValIndex a → [a]
 lookup ty (ValIndex valNode itemMap _) =
   let matchKeys = Set.toList $ lookupVal ty valNode
-  in  for matchKeys (\matchKey →
+  in  (flip fmap) matchKeys (\matchKey →
         case HMS.lookup matchKey itemMap of
           Just item → item
           Nothing   → error "Should not happen"
