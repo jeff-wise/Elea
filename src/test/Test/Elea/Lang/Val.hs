@@ -56,31 +56,31 @@ tests_Eval = testGroup "Eval" [
                   ]
                 )
                 (Val_Set $ Set $ Set.fromList [
-                    Val_Pair $ Pair (Val_Sym $ sym_rpg^.attr.name) 
-                                    (Val_Text $ Text "Sky")
-                  , Val_Pair $ Pair 
-                        (Val_Sym $ sym_rpg^.entity.dragon)
-                        (Val_Set $ Set $ Set.fromList [
-                            Val_Pair $ Pair
-                              (Val_Sym $ sym_rpg^.attr.health) 
-                              (Val_Var $ Var $ Val_Sym $ sym_rpg^.attr.health)
-                          , Val_Pair $ Pair
-                              (Val_Sym $ sym_rpg^.attr.gold)
-                              (Val_Var $ Var $ Val_Sym $ sym_rpg^.attr.gold)
-                          ]
-                        )
+                    pair  (Val_Sym $ sym_rpg^.attr.name) 
+                          (Val_Text $ Text "Sky")
+                  , pair
+                      (Val_Sym $ sym_rpg^.entity.dragon)
+                      (Val_Set $ Set $ Set.fromList [
+                          pair
+                            (Val_Sym $ sym_rpg^.attr.health) 
+                            (Val_Var $ Var $ Val_Sym $ sym_rpg^.attr.health)
+                        , pair
+                            (Val_Sym $ sym_rpg^.attr.gold)
+                            (Val_Var $ Var $ Val_Sym $ sym_rpg^.attr.gold)
+                        ]
+                      )
                   ]
                 )
       @?= (Val_Set $ Set $ Set.fromList [
-              Val_Pair $ Pair (Val_Sym $ sym_rpg^.attr.name)
-                              (Val_Text $ Text "Sky")
-            , Val_Pair $ Pair 
+              pair  (Val_Sym $ sym_rpg^.attr.name)
+                    (Val_Text $ Text "Sky")
+            , pair 
                 (Val_Sym $ sym_rpg^.entity.dragon)
                 (Val_Set $ Set $ Set.fromList [
-                        Val_Pair $ Pair
+                        pair
                           (Val_Sym $ sym_rpg^.attr.health) 
                           (Val_Num $ Z 49)
-                      , Val_Pair $ Pair
+                      , pair
                           (Val_Sym $ sym_rpg^.attr.gold)
                           (Val_Num $ Z 14)
                   ]

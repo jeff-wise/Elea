@@ -37,7 +37,7 @@ typeOf (Dtm  dtm )  = Dtm_EQ dtm
 
 isType ∷ Type → Val → Bool
 isType (Ty_Set  setTy ) (Val_Set  set ) = isSetType  setTy  set
-isType (Ty_Pair pairTy) (Val_Pair pair) = isPairType pairTy pair
+--isType (Ty_Pair pairTy) (Val_Pair pair) = isPairType pairTy pair
 isType (Ty_Arr  arrTy ) (Val_Arr  arr ) = isArrType  arrTy  arr
 isType (Ty_And  andTy ) val             = isAndType  andTy  val
 isType (Ty_Or   orTy  ) val             = isOrType   orTy   val
@@ -49,12 +49,12 @@ isType  Ty_Any          _               = True
 isType _                _               = False
 
 
-isPairType ∷ PairTy → Pair → Bool
-isPairType (IsPair tyA tyB) (Pair a b) = 
-  isType tyA a && isType tyB b
-isPairType (First  ty      ) (Pair a _) = isType ty a
-isPairType (Second ty      ) (Pair _ b) = isType ty b
-isPairType AnyPair           _          = True
+--isPairType ∷ PairTy → Pair → Bool
+--isPairType (IsPair tyA tyB) (Pair a b) = 
+--  isType tyA a && isType tyB b
+--isPairType (First  ty      ) (Pair a _) = isType ty a
+--isPairType (Second ty      ) (Pair _ b) = isType ty b
+--isPairType AnyPair           _          = True
 
 
 isSetType ∷ SetTy → Set → Bool
@@ -91,6 +91,8 @@ isTextType ∷ TextTy → Text → Bool
 isTextType (WithTextLen (Z len)      ) (Text text) = T.length text == len
 isTextType (IsText    (Text isText)) (Text text) = isText == text
 isTextType AnyText                   _           = True
+isTextType _                   _           = False
+
 
 
 isNumType ∷ NumberTy → Number → Bool

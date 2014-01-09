@@ -115,6 +115,7 @@ module Elea.Prelude
     , (Control.Lens.Setter.%~)
     , (Control.Lens.Combinators.&)
     , Control.Lens.TH.makeLenses
+    , module Debug.Trace
     , (<|)
     , viewl
     , ViewL (..)
@@ -124,6 +125,7 @@ module Elea.Prelude
 import qualified Prelude
 import Prelude (Char, Eq, Bool)
 
+import Debug.Trace
 
 import Data.Monoid (Monoid (..))
 import Data.Monoid ((<>))

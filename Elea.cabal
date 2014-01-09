@@ -28,8 +28,7 @@ Library
 
     hs-source-dirs:     src/lib
     
-    ghc-options:        -Wall -fno-warn-orphans -fno-warn-incomplete-patterns
-                        -fno-warn-missing-signatures
+    ghc-options:        -Wall -fno-warn-orphans -fno-warn-missing-signatures
 
     exposed-modules:    Elea.Lang.Type,
                         Elea.Lang.Types,

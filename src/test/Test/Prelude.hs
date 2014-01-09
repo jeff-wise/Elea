@@ -118,11 +118,14 @@ module Test.Prelude
     , (L.++)
     , module Test.Tasty
     , module Test.Tasty.HUnit
+    , module Debug.Trace
     ) where
 
 import qualified Prelude
 import Prelude (Char, Eq, Bool)
 
+
+import Debug.Trace
 
 import Data.Monoid (Monoid (..))
 import Data.Monoid ((<>))

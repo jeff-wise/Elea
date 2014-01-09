@@ -19,7 +19,7 @@ module Test.Data.System (
   , charClass, health, gold, name, books, charDomains
   --------- Entities
   , Sym_Entity
-  , dungeon, city, bartender, hero, warlock, dragon
+  , dungeon, hero, rogue, warlock, dragon
   --------- Domains
   , Sym_Domain
   , earth, fire, air, death
@@ -92,9 +92,8 @@ data Sym_Attribute = Sym_Attribute
 
 data Sym_Entity = Sym_Entity
   { _dungeon    ∷  Symbol
-  , _city       ∷  Symbol
-  , _bartender  ∷  Symbol
   , _hero       ∷  Symbol
+  , _rogue      ∷  Symbol
   , _warlock    ∷  Symbol
   , _dragon     ∷  Symbol
   }
@@ -138,12 +137,11 @@ mkAttrSyms = do
 
 mkEntitySyms = do 
   a ← newSymbol "Dungeon"
-  b ← newSymbol "City"
-  c ← newSymbol "Bartender"
-  d ← newSymbol "Hero"
-  e ← newSymbol "Warlock"
-  f ← newSymbol "Dragon"
-  return $ Sym_Entity a b c d e f
+  b ← newSymbol "Hero"
+  c ← newSymbol "Rogue"
+  d ← newSymbol "Warlock"
+  e ← newSymbol "Dragon"
+  return $ Sym_Entity a b c d e
 
 mkDomainSyms = do 
   a ← newSymbol "Earth"

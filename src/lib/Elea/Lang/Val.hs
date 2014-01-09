@@ -4,9 +4,11 @@ module Elea.Lang.Val (
     at
   , showSym  
   , doubleToInt
+  , asInt
   , numEven, numOdd
   , isInteger
   , eval
+  , pair
   ) where
 
 
@@ -20,7 +22,6 @@ import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
-
 
 
 
@@ -57,6 +58,13 @@ doubleToInt double =
         else Nothing
 
 
+asInt ∷ Number → Maybe Int
+asInt (Z i) = Just i
+asInt (R d) =
+  let i = round d
+  in  if d == (fromIntegral i)
+        then Just i
+        else Nothing
 
 
 
@@ -84,7 +92,7 @@ eval ∷ Env → Val → Val
 eval env val = eval' val
   where
     eval' ∷ Val → Val
-    eval' (Val_Pair     (Pair  a b)) = Val_Pair $ Pair (eval' a) (eval' b)
+    --eval' (Val_Pair     (Pair  a b)) = Val_Pair $ Pair (eval' a) (eval' b)
     eval' (Val_Set      (Set   set)) = Val_Set $ Set $ HS.map eval' set
     eval' (Val_Arr      (Arr arr)) = Val_Arr $ Arr $ fmap eval' arr
     eval' (Val_Var  var@(Var name )) = case HMS.lookup name env of

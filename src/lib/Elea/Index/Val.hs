@@ -5,6 +5,8 @@ module Elea.Index.Val (
   , ValIndex    
   , lookup
   , insert
+  , _valNode
+  , _node_Arr
   ) where
 
 
@@ -39,25 +41,22 @@ data ValIndex a = ValIndex
 
 
 
-data Node_Val = Node_Val
-  { _node_Set   ∷  Node_Set
-  , _node_Pair  ∷  Node_Pair
-  , _node_Arr   ∷   Node_Arr
-  , _node_Text  ∷   Node_Text
-  , _node_Num   ∷   Node_Num
-  , _node_Sym   ∷   Node_Sym
-  }
-
+data Node_Val = 
+    Empty 
+  | Node_Val
+      { _node_Set   ∷  Node_Set
+      , _node_Arr   ∷  Node_Arr
+      , _node_Text  ∷  Node_Text
+      , _node_Num   ∷  Node_Num
+      , _node_Sym   ∷  Node_Sym
+      }
 
 
 
 data Node_Set = Node_Set
-  { _setKeyMap  ∷  HMS.HashMap MatchKey Int -- | Lengths of stored sets
-  , _setValNode ∷  Node_Val            -- | Set values
+  { _setSizeMap ∷  HMS.HashMap MatchKey Int  -- | Lengths of stored sets
+  , _setValNode ∷  Node_Val                  -- | Set values
   }
-
-
-data Node_Pair = Node_Pair Node_Val Node_Val
 
 
 data Node_Arr = Node_Arr
@@ -68,12 +67,55 @@ data Node_Num = Node_Num
   { _numMap ∷  Map.Map Number KeySet }
 
 
-data Node_Text= Node_Text
+data Node_Text = Node_Text
   { _textMap  ∷  HMS.HashMap Text KeySet }
 
 
 data Node_Sym = Node_Sym 
   { _symMap   ∷  HMS.HashMap Symbol KeySet }
+
+
+-- Val Node instances
+
+instance (Show a) ⇒ Show (ValIndex a) where
+  show (ValIndex valNode itemMap keyCounter) =
+    "ValNode:\n " ++ show valNode ++ "\n" ++
+    "ItemMap:\n " ++ show itemMap ++ "\n" ++
+    "Counter:\n " ++ show keyCounter ++ "\n"
+ 
+
+instance Show Node_Val where 
+  show Empty   = "Empty"
+  show nodeVal =
+    "Set:\n " ++ (show $ _node_Set nodeVal) ++ "\n" ++
+    "Arr:\n " ++ (show $ _node_Arr nodeVal) ++ "\n" ++ 
+    "Num:\n " ++ (show $ _node_Num nodeVal) ++ "\n" ++
+    "Text:\n " ++ (show $ _node_Text nodeVal) ++ "\n" ++
+    "Sym:\n " ++ (show $ _node_Sym nodeVal) ++ "\n"
+
+
+instance Show Node_Set where
+  show (Node_Set keyMap valNode) =
+    "KeyMap:\n " ++ show keyMap ++ "\n"  ++
+    "ValNode:\n " ++ show valNode ++ "\n" 
+
+
+instance Show Node_Arr where
+  show (Node_Arr arrSeq) = show arrSeq
+
+
+instance Show Node_Num where
+  show (Node_Num numMap) = show numMap
+
+
+instance Show Node_Text where
+  show (Node_Text textMap) = show textMap
+
+
+instance Show Node_Sym where
+  show (Node_Sym symMap) = show symMap
+
+
 
 
 ---------------------------------------------------------------------
@@ -101,8 +143,7 @@ newValIndex = ValIndex
 -- | Lazily construct a value node
 newValNode ∷ Node_Val
 newValNode = Node_Val
-  { _node_Set   = Node_Set HMS.empty newValNode
-  , _node_Pair  = Node_Pair newValNode newValNode
+  { _node_Set   = Node_Set HMS.empty Empty
   , _node_Arr   = Node_Arr Seq.empty
   , _node_Text  = Node_Text HMS.empty
   , _node_Num   = Node_Num Map.empty
@@ -127,28 +168,31 @@ insert val item (ValIndex valNode itemMap keyCounter) =
 
 
 insertVal ∷ Val → MatchKey → Node_Val → Node_Val
-insertVal (Val_Set  set ) key node = node & node_Set  %~ insertSet  set key
-insertVal (Val_Pair pair) key node = node & node_Pair %~ insertPair pair key
-insertVal (Val_Arr  arr ) key node = node & node_Arr  %~ insertArr  arr  key
-insertVal (Val_Text text) key node = node & node_Text %~ insertText text key
-insertVal (Val_Num  num ) key node = node & node_Num  %~ insertNum  num  key
-insertVal (Val_Sym  sym ) key node = node & node_Sym  %~ insertSym  sym  key
+insertVal val             key Empty = insertVal val key newValNode
+insertVal (Val_Set  set ) key node  = node & node_Set  %~ insertSet  set key
+insertVal (Val_Arr  arr ) key node  = node & node_Arr  %~ insertArr  arr  key
+insertVal (Val_Text text) key node  = node & node_Text %~ insertText text key
+insertVal (Val_Num  num ) key node  = node & node_Num  %~ insertNum  num  key
+insertVal (Val_Sym  sym ) key node  = node & node_Sym  %~ insertSym  sym  key
+insertVal _               _   node  = node
 
 
 
 -- Set represents a single val that with multiple values
 -- Insert each set item into the val node
 insertSet ∷ Set → MatchKey → Node_Set → Node_Set
-insertSet (Set set) key (Node_Set setKeyMap valNode) =
-  let addVal node val = insertVal val key node
-      valNode' =  HS.foldl' addVal valNode set
-  in  Node_Set (HMS.insert key (HS.size set) setKeyMap) valNode'
+insertSet (Set set) key (Node_Set keyMap valNode) =
+  let keyMap'  = HMS.insert key (HS.size set) keyMap
+      valNode' = HS.foldl' addValToNode valNode set
+  in  Node_Set keyMap' valNode'
+  where
+    addValToNode node  val = insertVal val key node
 
 
 
-insertPair ∷ Pair → MatchKey → Node_Pair → Node_Pair
-insertPair (Pair a b) key (Node_Pair nodeA nodeB) =
-  Node_Pair (insertVal a key nodeA) (insertVal b key nodeB)
+--insertPair ∷ Pair → MatchKey → Node_Pair → Node_Pair
+--insertPair (Pair a b) key (Node_Pair nodeA nodeB) =
+--  Node_Pair (insertVal a key nodeA) (insertVal b key nodeB)
 
 
 
@@ -171,7 +215,7 @@ insertText text key (Node_Text textMap) = Node_Text $
 
 insertNum ∷ Number → MatchKey → Node_Num → Node_Num
 insertNum num key (Node_Num numMap) = Node_Num $
-  Map.adjust (Set.insert key) num numMap
+  Map.insertWith Set.union num (Set.singleton key) numMap
 
 
 
@@ -199,14 +243,20 @@ lookup ty (ValIndex valNode itemMap _) =
 
 
 lookupVal ∷ Type → Node_Val → KeySet
-lookupVal (Ty_Set  setTy ) node = lookupSet  setTy  $ _node_Set  node
-lookupVal (Ty_Pair pairTy) node = lookupPair pairTy $ _node_Pair node
-lookupVal (Ty_Arr  arrTy ) node = lookupArr  arrTy  $ _node_Arr  node
-lookupVal (Ty_And  andTy ) node = lookupAnd  andTy node
-lookupVal (Ty_Or   orTy  ) node = lookupOr   orTy  node
-lookupVal (Ty_Text textTy) node = lookupText textTy $ _node_Text node 
-lookupVal (Ty_Num  numTy ) node = lookupNum  numTy  $ _node_Num  node
-lookupVal (Ty_Sym  symTy ) node = lookupSym  symTy  $ _node_Sym  node
+lookupVal _                Empty = Set.empty
+lookupVal (Ty_Set  setTy ) node  = lookupSet  setTy  $ _node_Set  node
+lookupVal (Ty_Arr  arrTy ) node  = lookupArr  arrTy  $ _node_Arr  node
+lookupVal (Ty_And  andTy ) node  = lookupAnd  andTy node
+lookupVal (Ty_Or   orTy  ) node  = lookupOr   orTy  node
+lookupVal (Ty_Text textTy) node  = lookupText textTy $ _node_Text node 
+lookupVal (Ty_Num  numTy ) node  = lookupNum  numTy  $ _node_Num  node
+lookupVal (Ty_Sym  symTy ) node  = lookupSym  symTy  $ _node_Sym  node
+lookupVal (Ty_Any        ) node  = (lookupSet  AnySet    $ _node_Set  node)
+                       `Set.union` (lookupArr  AnyArray  $ _node_Arr  node)
+                       `Set.union` (lookupText AnyText   $ _node_Text node)
+                       `Set.union` (lookupNum  AnyNumber $ _node_Num  node)
+                       `Set.union` (lookupSym  AnySymbol $ _node_Sym  node)
+
 
 
 
@@ -231,15 +281,6 @@ lookupSet AnySet                 (Node_Set setMap _      ) =
 
 
 
-lookupPair ∷ PairTy → Node_Pair → KeySet
-lookupPair (IsPair ty1 ty2) (Node_Pair val1 val2) =
-  lookupVal ty1 val1 `Set.intersection` lookupVal ty2 val2
-lookupPair (First  ty    ) (Node_Pair val1 _   ) = lookupVal ty val1
-lookupPair (Second ty    ) (Node_Pair _    val2) = lookupVal ty val2
-lookupPair AnyPair          (Node_Pair val1 val2) = 
-  lookupVal Ty_Any val1 `Set.intersection` lookupVal Ty_Any val2
-
-
 
 lookupArr ∷ ArrayTy → Node_Arr → KeySet
 lookupArr (WithIndex num ty) (Node_Arr nodeArr) =
@@ -249,13 +290,15 @@ lookupArr (WithIndex num ty) (Node_Arr nodeArr) =
   in  if (idx >= 0) && (idx < Seq.length nodeArr)
         then lookupVal ty $ Seq.index nodeArr idx
         else Set.empty
-lookupArr (IsArray  tyList ) (Node_Arr nodeArr) =
-  let go (ty :< remTys) (valNode :< remValNodes) = 
-        if Seq.null remTys
-          then  Set.empty
-          else  lookupVal ty valNode `Set.intersection`
-                go (viewl remTys) (viewl remValNodes)
-  in  go (viewl tyList) (viewl nodeArr)
+lookupArr (IsArray  tySeq ) (Node_Arr nodeArr) =
+  let go _                EmptyL                    = Set.empty
+      go EmptyL           _                         = Set.empty
+      go (ty :< remTys)   (valNode :< remValNodes)
+        | Seq.null remTys = lookupVal ty valNode
+        | otherwise       = Set.intersection
+                              (lookupVal ty valNode)
+                              (go (viewl remTys) (viewl remValNodes))
+  in  go (viewl tySeq) (viewl nodeArr)
 lookupArr AnyArray           (Node_Arr nodeArr) =
     F.foldl' Set.union Set.empty $
       fmap (lookupVal Ty_Any) nodeArr
@@ -324,7 +367,7 @@ lookupNum AnyNumber                (Node_Num numMap) =
 lookupSym ∷ SymbolTy → Node_Sym → KeySet
 lookupSym (IsSymbol sym) (Node_Sym symMap) =
   maybe Set.empty id $ HMS.lookup sym symMap
+lookupSym AnySymbol      (Node_Sym symMap) =
+  HMS.foldl' Set.union Set.empty $ symMap
    
-
-
 

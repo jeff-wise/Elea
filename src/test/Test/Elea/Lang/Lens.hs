@@ -15,14 +15,6 @@ import Elea.Lang.Types
 import qualified Data.HashSet as Set
 
 
-{-
-get ∷ Lens → Val → Maybe Val
-get (Lens_Set  setLens ) (Val_Set  set ) = getFromSet   setLens  set
-get (Lens_Pair pairLens) (Val_Pair pair) = getFromPair  pairLens pair
-get (Lens_Arr  arrLens ) (Val_Arr  arr ) = getFromArray arrLens  arr
-get Lens_This             val            = Just val
-get _                    _               = Nothing
--}
 
 
 tests_Lens = testGroup "Val Lenses" [
@@ -34,22 +26,22 @@ tests_Lens = testGroup "Val Lenses" [
       get Lens_This complexSet @?= (Just $ complexSet)
 
   , testCase "First in Pair" $
-          get (Lens_Pair $ AtFirst Lens_This) simplePair
+          get (getFromFst Lens_This) simplePair
       @?= (Just $ Val_Sym $ sym_rpg^.attr.gold)
   
   , testCase "Second in Pair" $
-          get (Lens_Pair $ AtSecond Lens_This) simplePair
+          get (getFromSnd Lens_This) simplePair
       @?= (Just $ Val_Num $ Z 100)
 
   , testCase "Both in Pair" $
-          get (Lens_Pair $ AtBoth 
+          get (getFromBoth
                 (Lens_Set $ AnySuchThat (Ty_Num $ IsNumber $ R 1.11)
                                         (Lens_This))
-                (Lens_Pair $ AtFirst Lens_This)
-              ) 
+                (getFromFst Lens_This)
+              )
               complexPair
-      @?= (Just $ Val_Pair $ Pair (Val_Num $ R 1.11) 
-                                  (Val_Sym $ sym_color^.blue))
+      @?= (Just $ pair  (Val_Num $ R 1.11) 
+                        (Val_Sym $ sym_color^.blue))
 
   , testCase "First in Set, such that is 5" $
           get (Lens_Set $ AnySuchThat (Ty_Num $ IsNumber $ Z 5) 
@@ -77,7 +69,7 @@ tests_Lens = testGroup "Val Lenses" [
               Val_Num $ Z 11, Val_Num $ R 13.0, Val_Num $ Z 17])
 
   , testCase "Get 2nd item in Array" $
-          get (Lens_Arr $ AtIndex 2 Lens_This) simpleArray
+          get (atIndex (Z 2) Lens_This) simpleArray
       @?= (Just $ Val_Text $ Text "Lisa")
   
     --TODO add tests with nested lenses

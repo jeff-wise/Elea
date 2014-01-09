@@ -38,7 +38,7 @@ complexSet ∷ Val
 complexSet = Val_Set $ Set $ Set.fromList [
     Val_Num $ Z 1
   , Val_Text $ Text "A Set Element"
-  , Val_Pair $ Pair (Val_Sym $ sym_social^.friends) (Val_Num $ Z 500)
+  , pair (Val_Sym $ sym_social^.friends) (Val_Num $ Z 500)
   , Val_Set $ Set $ Set.fromList [
         Val_Num $ Z 100
       , Val_Text $ Text "One-hundred"
@@ -51,18 +51,18 @@ complexSet = Val_Set $ Set $ Set.fromList [
 
 
 simplePair ∷ Val
-simplePair = Val_Pair $ Pair (Val_Sym $ sym_color^.blue)
-                             (Val_Num $ Z 100)
+simplePair = pair (Val_Sym $ sym_color^.blue)
+                  (Val_Num $ Z 100)
 
 
 complexPair ∷ Val
-complexPair = Val_Pair $ Pair
+complexPair = pair
     (Val_Set $ Set $ Set.fromList [ Val_Num $ Z 3
                                   , Val_Num $ R 1.11
                                   , Val_Text $ Text "Bird"
                                   ]
     ) 
-    (Val_Pair $ Pair (Val_Sym $ sym_color^.blue) simpleArray) 
+    (pair (Val_Sym $ sym_color^.blue) simpleArray) 
 
 
 simpleArray ∷ Val

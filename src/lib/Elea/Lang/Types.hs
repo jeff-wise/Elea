@@ -10,25 +10,25 @@
 ---------------------------------------------------------------------
 module Elea.Lang.Types 
   ( Val (..)
-  , Set (..), Pair (..), Array (..)
-  , Text (..), Number (..), Symbol
+  , Set (..), Array (..), pair
+  , Text (..), Number (..), Symbol, newSymbol
   , DateTime (..), Variable (..)
   , Error (..)
   , SynError (..), AppError (..), ParamError (..)
   , Type (..)
-  , SetTy (..), PairTy (..), ArrayTy (..)
+  , SetTy (..), ArrayTy (..)
+  , pairTy, fstTy, sndTy
   , AndTy (..), OrTy (..)
   , TextTy (..), NumberTy (..), SymbolTy (..)
   , DateTimeTy (..), VariableTy (..)
-  , Env, SymbolTable (..)
+  , Env, SymbolTable (..), newSymbolTable
   , System (..), Particle (..)
   , Synthesis (..), Application (..), Param (..)
   , Lens (..)
-  , SetLens (..), PairLens (..), ArrayLens (..)
+  , getFromFst, getFromSnd, getFromBoth, atIndex
+  , SetLens (..), ArrayLens (..)
   , Constructor (..)
   , FunDef (..), FunDict
-  -- * Constructors
-  , newSymbol, newSymbolTable
   -- * Lenses
   , tblCount, tblMap
   , sysVal, sysEnv, symTable
@@ -57,7 +57,6 @@ import GHC.Generics (Generic)
 
 data Val = 
     Val_Set     Set
-  | Val_Pair    Pair
   | Val_Arr     Array
   | Val_Text    Text
   | Val_Num     Number
@@ -71,7 +70,6 @@ instance Hashable Val
 
 instance Show Val where
   show (Val_Set  set ) = show set
-  show (Val_Pair pair) = show pair
   show (Val_Arr  arr ) = show arr
   show (Val_Text text) = show text
   show (Val_Num  num ) = show num
@@ -93,20 +91,6 @@ instance Show Set where
 
 
 
-data Pair = Pair
-  { _first  ∷  Val
-  , _second ∷  Val
-  } deriving (Eq, Generic)
-
-instance Hashable Pair
-
-instance Show Pair where
-  show (Pair a b) = 
-    "(" ++ show a ++ "," ++ show b ++ ")"
-       
-
-
-
 data Array = Arr
   { _getArr ∷  Seq.Seq Val }
   deriving (Eq, Generic)
@@ -115,6 +99,14 @@ instance Hashable Array
 
 instance Show Array where
   show (Arr arr) = show arr
+
+
+-- Convenience function to create a
+-- 2-element array
+pair ∷ Val → Val → Val
+pair val1 val2 = Val_Arr $ Arr (val1 <| val2 <| Seq.empty)
+
+
 
 
 
@@ -198,6 +190,31 @@ instance Hashable Symbol
 
 instance Show Symbol where
   show (Sym symId) = "Symbol " ++ show symId
+
+
+
+newSymbol ∷ T.Text → State System Symbol
+newSymbol symName = state $ \system →
+  let (SymTable count symMap) = _symTable system
+  in  case L.find ((symName==) . snd) $ HMS.toList symMap of
+        -- Symbol already defined, return it
+        Just (k, _) → (Sym k, system)
+        -- Create a new int mapping for text symbol
+        Nothing     →
+          let count' = count + 1
+              system' = system {
+                -- Update symbol table
+                _symTable = SymTable {
+                    _tblCount  = count'
+                  , _tblMap    = HMS.insert count' symName symMap
+                }
+              }
+          in  (Sym count', system')
+
+
+
+
+
 
 
 
@@ -294,7 +311,7 @@ instance Show ParamError where
 
 data Type = 
     Ty_Set    SetTy
-  | Ty_Pair   PairTy
+  -- | Ty_Pair   PairTy
   | Ty_Arr    ArrayTy
   | Ty_And    AndTy
   | Ty_Or     OrTy
@@ -311,7 +328,7 @@ instance Hashable Type
 
 instance Show Type where
   show (Ty_Set  setTy ) = show setTy
-  show (Ty_Pair pairTy) = show pairTy
+  -- show (Ty_Pair pairTy) = show pairTy
   show (Ty_Arr  arrTy ) = show arrTy
   show (Ty_And  andTy ) = show andTy
   show (Ty_Or   orTy  ) = show orTy
@@ -319,13 +336,14 @@ instance Show Type where
   show (Ty_Num  numTy ) = show numTy
   show (Ty_Sym  symTy ) = show symTy
   show (Ty_Dtm  dtmTy ) = show dtmTy
+  show (Ty_Var  varTy ) = show varTy
   show  Ty_Any          = "Any"
 
 
 
 data SetTy = 
     WithElem      Type
-  | WithoutElem   Type
+--  | WithoutElem   Type
 --  | IsSet         [Type]
   | SetWithSize   Number
   | AnySet
@@ -342,25 +360,7 @@ instance Show SetTy where
   show  AnySet       = "Set"
 
 
-
-data PairTy = 
-    IsPair  Type Type
-  | First   Type
-  | Second  Type
-  | AnyPair
-  deriving (Eq, Generic)
-
-instance Hashable PairTy
-
-instance Show PairTy where
-  show (IsPair ty1 ty2) = 
-    "Is (" ++ show ty1 ++ ", " ++ show ty2 ++ ")"
-  show (First       ty) = "First of " ++ show ty
-  show (Second      ty) = "Second of " ++ show ty
-  show  AnyPair         = "Pair"
-
-
-
+-- TODO array with size
 data ArrayTy = 
     IsArray    (Seq.Seq Type)
   | WithIndex  Number Type 
@@ -374,6 +374,23 @@ instance Show ArrayTy where
   show (WithIndex i ty) = "At " ++ show i 
     ++ " type of " ++ show ty
   show AnyArray         = "Array"
+
+
+
+pairTy ∷ Type → Type → Type
+pairTy ty1 ty2 = Ty_Arr $ IsArray (ty1 <| ty2 <| Seq.empty)
+
+
+fstTy ∷ Type → Type
+fstTy ty = Ty_Arr $ WithIndex (Z 0) ty
+
+
+sndTy ∷ Type → Type
+sndTy ty = Ty_Arr $ WithIndex (Z 1) ty
+
+
+
+
 
 
 data AndTy = 
@@ -443,13 +460,16 @@ instance Show NumberTy where
 
 
 -- Always compiled value
-data SymbolTy = IsSymbol  Symbol
+data SymbolTy =
+    IsSymbol  Symbol
+  | AnySymbol
   deriving (Eq, Generic)
 
 instance Hashable SymbolTy
 
 instance Show SymbolTy where
   show (IsSymbol sym) = "Is " ++ show sym
+  show AnySymbol      = "Symbol"
 
 
 
@@ -488,13 +508,21 @@ data SymbolTable = SymTable
   }
 
 
+newSymbolTable ∷ SymbolTable
+newSymbolTable = SymTable 0 HMS.empty
+
+
+
 
 
 data Particle = Particle
   { _partId   ∷  Val
   , _partVal  ∷  Val
   }
-  deriving (Eq)
+  deriving (Eq, Generic)
+
+
+instance Hashable Particle
 
 instance Show Particle where
   show (Particle ident val) = 
@@ -518,7 +546,6 @@ data System = System
 
 data Lens = 
     Lens_Set    SetLens
-  | Lens_Pair   PairLens
   | Lens_Arr    ArrayLens
   | Lens_This
 
@@ -528,15 +555,27 @@ data SetLens =
   | AnySuchThat Type Lens
 
 
-data PairLens = 
-    AtFirst Lens
-  | AtSecond Lens
-  | AtBoth Lens Lens
+data ArrayLens =
+    AtIndices [(Number, Lens)]
+  | EachIndex Lens
 
 
-data ArrayLens = AtIndex Int Lens
+
+getFromFst ∷ Lens → Lens
+getFromFst lens = Lens_Arr $ AtIndices [(Z 0, lens)]
 
 
+getFromSnd ∷ Lens → Lens
+getFromSnd lens = Lens_Arr $ AtIndices [(Z 1, lens)]
+
+
+getFromBoth ∷ Lens → Lens → Lens
+getFromBoth lensA lensB = Lens_Arr $
+    AtIndices [(Z 0, lensA), (Z 1, lensB)]
+
+
+atIndex ∷ Number → Lens → Lens
+atIndex idx lens = Lens_Arr $ AtIndices [(idx, lens)]
 
 
 ---------------------------------------------------------------------
@@ -629,31 +668,6 @@ data Param = Param
 ---------------------------------------------------------------------
 -- Constructors
 ---------------------------------------------------------------------
-
-newSymbol ∷ T.Text → State System Symbol
-newSymbol symName = state $ \system →
-  let (SymTable count symMap) = _symTable system
-  in  case L.find ((symName==) . snd) $ HMS.toList symMap of
-        -- Symbol already defined, return it
-        Just (k, _) → (Sym k, system)
-        -- Create a new int mapping for text symbol
-        Nothing     →
-          let count' = count + 1
-              system' = system {
-                -- Update symbol table
-                _symTable = SymTable {
-                    _tblCount  = count'
-                  , _tblMap    = HMS.insert count' symName symMap
-                }
-              }
-          in  (Sym count', system')
-
-
-
-newSymbolTable ∷ SymbolTable
-newSymbolTable = SymTable 0 HMS.empty
-
-
 
 
 ---------------------------------------------------------------------
