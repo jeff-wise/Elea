@@ -10,7 +10,7 @@ module Test.Data.Val (
 import Test.Prelude
 import Test.Data.System
 
-import Elea.Lang.Types
+import Elea.Lang.Atom.Types
 
 
 import qualified Data.HashSet as Set

@@ -1,48 +1,27 @@
 
-{-# LANGUAGE DeriveGeneric #-}
 
-
----------------------------------------------------------------------
--- | 
--- Module with all of the main types.
---
--- Necessary to avoid circular imports
----------------------------------------------------------------------
-module Elea.Lang.Types 
-  ( Val (..)
+module Elea.Lang.Atom.Types
+  ( -- * Values
+    Val (..)
   , Set (..), Array (..), pair
-  , Text (..), Number (..), Symbol, newSymbol
+  , Text (..), Number (..), Symbol (..)
   , DateTime (..), Variable (..)
   , Error (..)
   , SynError (..), AppError (..), ParamError (..)
+  -- * Types
   , Type (..)
   , SetTy (..), ArrayTy (..)
   , pairTy, fstTy, sndTy
   , AndTy (..), OrTy (..)
   , TextTy (..), NumberTy (..), SymbolTy (..)
   , DateTimeTy (..), VariableTy (..)
-  , Env, SymbolTable (..), newSymbolTable
-  , System (..), Particle (..)
-  , Synthesis (..), Application (..), Param (..)
-  , Lens (..)
-  , getFromFst, getFromSnd, getFromBoth, atIndex
-  , SetLens (..), ArrayLens (..)
-  , Constructor (..)
-  , FunDef (..), FunDict
-  -- * Lenses
-  , tblCount, tblMap
-  , sysVal, sysEnv, symTable
   ) where
-
-
+ 
 
 import Elea.Prelude
 
 
-import Control.Monad.State.Lazy
-
-import qualified Data.HashMap.Strict as HMS
-import qualified Data.List.Stream as L
+import qualified Data.HashSet as HS
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 
@@ -64,6 +43,7 @@ data Val =
   | Val_Dtm     DateTime
   | Val_Var     Variable
   | Val_Err     Error
+  | Val_Null
   deriving (Eq, Generic)
 
 instance Hashable Val
@@ -77,11 +57,12 @@ instance Show Val where
   show (Val_Dtm  dtm ) = show dtm
   show (Val_Var  var ) = show var
   show (Val_Err  err ) = show err
+  show (Val_Null     ) = "Null"
 
 
 
 data Set = Set
-  { _getSet ∷ HashSet Val } 
+  { _getSet ∷ HS.HashSet Val } 
   deriving (Eq, Generic)
 
 instance Hashable Set
@@ -183,37 +164,13 @@ instance Show Number where
   show (R d) = show d
 
 
-data Symbol = Sym Int
+data Symbol = Symbol Int
   deriving (Eq, Generic)
 
 instance Hashable Symbol
 
 instance Show Symbol where
-  show (Sym symId) = "Symbol " ++ show symId
-
-
-
-newSymbol ∷ T.Text → State System Symbol
-newSymbol symName = state $ \system →
-  let (SymTable count symMap) = _symTable system
-  in  case L.find ((symName==) . snd) $ HMS.toList symMap of
-        -- Symbol already defined, return it
-        Just (k, _) → (Sym k, system)
-        -- Create a new int mapping for text symbol
-        Nothing     →
-          let count' = count + 1
-              system' = system {
-                -- Update symbol table
-                _symTable = SymTable {
-                    _tblCount  = count'
-                  , _tblMap    = HMS.insert count' symName symMap
-                }
-              }
-          in  (Sym count', system')
-
-
-
-
+  show (Symbol symId) = "Symbol " ++ show symId
 
 
 
@@ -243,7 +200,9 @@ instance Show Variable where
 
 -- Error Values
 
-data Error = Err_Syn Text SynError
+data Error =
+    Err_Syn Text SynError
+  | Err_Proc ProcessError
   deriving (Eq, Generic)
 
 instance Hashable Error
@@ -254,6 +213,13 @@ instance Show Error where
     ++ "\nError:\n" ++ show err
 
 
+
+data ProcessError =
+    CannotFindSystem Val
+  | ProcessAlreadyExists Val
+  deriving (Eq, Generic)
+
+instance Hashable ProcessError
 
 
 -- | Synthesis Error
@@ -344,10 +310,15 @@ instance Show Type where
 data SetTy = 
     WithElem      Type
 --  | WithoutElem   Type
---  | IsSet         [Type]
+  | IsSet         (HS.HashSet Type)
   | SetWithSize   Number
   | AnySet
   deriving (Eq, Generic)
+
+
+-- how to implement isSet
+-- check each one, get matches
+-- make sure params are not subtypes of each other?
 
 instance Hashable SetTy
 
@@ -356,7 +327,7 @@ instance Show SetTy where
     "WithElem of " ++ show ty
   show (SetWithSize size) = 
     "Set with size of " ++ show size
- -- show (IsSet set) = "Is " ++ show set
+  show (IsSet set) = "Is " ++ show set
   show  AnySet       = "Set"
 
 
@@ -473,13 +444,13 @@ instance Show SymbolTy where
 
 
 
-data VariableTy = VarTy Type
+data VariableTy = IsVariable Type
   deriving (Eq, Generic)
 
 instance Hashable VariableTy
 
 instance Show VariableTy where
-  show (VarTy varIdTy) = "Variable of " ++ show varIdTy
+  show (IsVariable varIdTy) = "Variable of " ++ show varIdTy
 
 
 
@@ -493,138 +464,6 @@ instance Hashable DateTimeTy
 instance Show DateTimeTy where
   show (IsDateTime dtm) = "Is " ++ show dtm
   show AnyDateTime      = "DateTime"
-
-
----------------------------------------------------------------------
--- System
----------------------------------------------------------------------
-
-type Env = HMS.HashMap Val Val
-
-
-data SymbolTable = SymTable
-  { _tblCount ∷  Int
-  , _tblMap   ∷  HMS.HashMap Int T.Text
-  }
-
-
-newSymbolTable ∷ SymbolTable
-newSymbolTable = SymTable 0 HMS.empty
-
-
-
-type ParticleId = Val
-
-
-data Particle = Particle
-  { _partId   ∷  ParticleId
-  , _partVal  ∷  Val
-  }
-  deriving (Eq, Generic)
-
-
-instance Hashable Particle
-
-instance Show Particle where
-  show (Particle ident val) = 
-    "Particle\n" ++ show ident ++ "\n"
-                 ++ show val  ++ "\n"
-
-
-data System = System 
-  { _sysVal       ∷  Val
-  , _sysEnv       ∷  Env
-  , _sysSymTable  ∷  SymbolTable
-  , _sysPartIndex ∷  ValIndex Particle
-  , _sysProgram   ∷  Program
-  , _sysRelIndex  ∷  RelIndex
-  }
-
-
-
-data Program = Program 
-  { _onInit   ∷  [Action]
-  , _onRecv   ∷  TypeIndex [Action]
-  , _onCreate ∷  TypeIndex [Action]
-  }
-
-
-
-data Action = 
-    Spawn Particle
-  | Send Val Particle
-  | Terminate
-  | Create System
-  | Synth Synthesis
-
-
-
----------------------------------------------------------------------
--- Value Constructors
----------------------------------------------------------------------
-
--- | Uniquely identify a relation
-data RelDef = RelDef
-  { _relName  ∷  Text  -- | Name of relation
-  , _domain   ∷  Text  -- | Name of domain set
-  , _codomain ∷  Text  -- | Name of codomain set
-  }
-
--- | A relational tuple is always a relationship
--- between two particles
-type RelTuple = (ParticleId, ParticleId)
-
-
-type ParticleIdSet = HS.HashSet ParticleId
-
--- | Mathematical relation: domain X codomain
-type Relation = HMS.HashMap ParticleId ParticleIdSet
-
-
--- | Store relations efficiently
-type RelIndex = HMS.HashMap RelDef Relation
-
-
-
-
-
-data Query = 
-  Query
-    -- | Match ParticleIDs 
-    Matcher
-    -- | Filter matched particles by value
-    Type
-    -- | Extract values from matched particles
-    Type
-
-
-
-data Matcher = 
-    MatchType Type
-  | MatchRel  Relation
-
-
-
-
-data Constructor = 
-    Con_Val Val
- -- | Con_Query Query
-  -- TODO Generator...how/what...constraints?
-
-
-
-
----------------------------------------------------------------------
--- Constructors
----------------------------------------------------------------------
-
-
----------------------------------------------------------------------
--- Lenses
----------------------------------------------------------------------
-
-makeLenses ''System
-makeLenses ''SymbolTable
 
 
 

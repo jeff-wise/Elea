@@ -30,14 +30,14 @@ Library
     
     ghc-options:        -Wall -fno-warn-orphans -fno-warn-missing-signatures
 
-    exposed-modules:    Elea.Lang.Type,
-                        Elea.Lang.Types,
-                        Elea.Lang.Lens
-                        Elea.Lang.Val,
-                        Elea.Lang.Synthesis,
-                        Elea.Lang.Apply,
-                        Elea.Lang.Constructor,
-                        Elea.Index.Val
+    exposed-modules:    Elea.Lang.Atom.Type,
+                        Elea.Lang.Atom.Types,
+                        Elea.Lang.Atom.Lens
+                        Elea.Lang.Atom.Val,
+                        Elea.Lang.Fun.Apply,
+                        Elea.Lang.Index.Val,
+                        Elea.Lang.Index.Type,
+                        Elea.Lang.Sys.Types
 
     other-modules:      Elea.Prelude
 
@@ -51,11 +51,12 @@ Library
                         lens,
                         hashable,
                         mtl,
+                        stm,
                         errors
               
 
     extensions:		NoImplicitPrelude, OverloadedStrings, UnicodeSyntax,
-                        FlexibleInstances, TemplateHaskell
+                        FlexibleInstances, TemplateHaskell, DeriveGeneric
 
 
 Executable testsuite
@@ -66,11 +67,11 @@ Executable testsuite
     main-is:            Test/Main.hs
 
     other-modules:      Test.Prelude,
-                        Test.Elea.Lang.Lens,
-                        Test.Elea.Lang.Val,
-                        Test.Elea.Lang.Type,
-                        Test.Elea.Lang.Synthesis,
-                        Test.Elea.Index.Val
+                        Test.Elea.Lang.Atom.Lens,
+                        Test.Elea.Lang.Atom.Val,
+                        Test.Elea.Lang.Atom.Type,
+                        Test.Elea.Lang.Index.Type,
+                        Test.Elea.Lang.Index.Val
 
     
 
@@ -84,10 +85,12 @@ Executable testsuite
                         stream-fusion,
                         lens,
                         mtl,
-                        QuickCheck
+                        QuickCheck,
+                        text
 
 
     ghc-options:        -Wall -fno-warn-missing-signatures
 
     extensions:         OverloadedStrings, UnicodeSyntax, TemplateHaskell, NoImplicitPrelude
+
 

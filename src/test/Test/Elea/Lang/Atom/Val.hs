@@ -1,13 +1,14 @@
 
 
-module Test.Elea.Lang.Val where
+module Test.Elea.Lang.Atom.Val where
 
 
 import Test.Prelude
 import Test.Data.System
 
-import Elea.Lang.Val
-import Elea.Lang.Types
+import Elea.Lang.Atom.Val
+import Elea.Lang.Atom.Types
+import Elea.Lang.Sys.Types (eval)
 
 
 import qualified Data.HashMap.Strict as HMS
@@ -88,4 +89,6 @@ tests_Eval = testGroup "Eval" [
             ]
           )
   ]
+
+
 

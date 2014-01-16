@@ -30,13 +30,12 @@ module Test.Data.System (
 
 import Test.Prelude
 
-import Elea.Lang.Types
+import Elea.Lang.Atom.Types
+import Elea.Lang.Sys.Types
 
 
 import Control.Monad.State.Lazy (runState)
 
-import qualified Data.HashSet as Set
-import qualified Data.HashMap.Strict as HMS
 
 
 
@@ -44,13 +43,11 @@ import qualified Data.HashMap.Strict as HMS
 -- Symbols
 ---------------------------------------------------------------------
 
-initTestSystem = System {
-    _sysVal   = Val_Set $ Set $ Set.empty
-  , _sysEnv   = HMS.empty
-  , _symTable = newSymbolTable
-}
+initTestSystem = newSystem
 
 
+
+ 
 ---------------------------------------------------------------------
 -- Symbols
 ---------------------------------------------------------------------

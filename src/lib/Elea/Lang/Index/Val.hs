@@ -1,23 +1,21 @@
 
 
-module Elea.Index.Val (
-    newValIndex
-  , ValIndex    
-  , lookup
-  , insert
-  , _valNode
-  , _node_Arr
+module Elea.Lang.Index.Val (
+    ValIndex    
+  , newValIndex
+  , lookup, insert
   ) where
 
 
 import Elea.Prelude
-import Elea.Lang.Types
-import Elea.Lang.Val
+import Elea.Lang.Atom.Types
+import Elea.Lang.Atom.Val
 
 
 import qualified Data.Foldable as F
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as HS
+import qualified Data.List.Stream as L
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
 import qualified Data.Set as Set
@@ -25,25 +23,26 @@ import qualified Data.Text as T
 
 
 
+
 ---------------------------------------------------------------------
--- Value Index Types
+-- Types
 ---------------------------------------------------------------------
 
 type MatchKey = Int
 type KeySet = Set.Set MatchKey
 
 
-data ValIndex a = ValIndex
-  { _valNode    ∷ Node_Val
-  , _itemMap    ∷ HMS.HashMap MatchKey a
-  , _keyCounter ∷ Int
+
+data ValIndex = ValIndex
+  { _valNode        ∷ Node_Val
+  , _valMap         ∷ HMS.HashMap MatchKey Val
+  , _valKeyCounter  ∷ Int
   }
 
 
 
 data Node_Val = 
-    Empty 
-  | Node_Val
+    Node_Val
       { _node_Set   ∷  Node_Set
       , _node_Arr   ∷  Node_Arr
       , _node_Text  ∷  Node_Text
@@ -53,9 +52,13 @@ data Node_Val =
 
 
 
+-- map input keys to sets of new keys
+-- linear lookup, loop elems, in each set
 data Node_Set = Node_Set
-  { _setSizeMap ∷  HMS.HashMap MatchKey Int  -- | Lengths of stored sets
-  , _setValNode ∷  Node_Val                  -- | Set values
+  { _setKeyMap  ∷  HMS.HashMap MatchKey MatchKey
+  , _setSizeMap ∷  HMS.HashMap MatchKey Int
+  , _setValNode ∷  Node_Val
+  , _setCounter ∷  Int
   }
 
 
@@ -77,15 +80,14 @@ data Node_Sym = Node_Sym
 
 -- Val Node instances
 
-instance (Show a) ⇒ Show (ValIndex a) where
-  show (ValIndex valNode itemMap keyCounter) =
+instance Show ValIndex where
+  show (ValIndex valNode valItemMap valKeyCounter) =
     "ValNode:\n " ++ show valNode ++ "\n" ++
-    "ItemMap:\n " ++ show itemMap ++ "\n" ++
-    "Counter:\n " ++ show keyCounter ++ "\n"
+    "ItemMap:\n " ++ show valItemMap ++ "\n" ++
+    "Counter:\n " ++ show valKeyCounter ++ "\n"
  
 
 instance Show Node_Val where 
-  show Empty   = "Empty"
   show nodeVal =
     "Set:\n " ++ (show $ _node_Set nodeVal) ++ "\n" ++
     "Arr:\n " ++ (show $ _node_Arr nodeVal) ++ "\n" ++ 
@@ -95,7 +97,7 @@ instance Show Node_Val where
 
 
 instance Show Node_Set where
-  show (Node_Set keyMap valNode) =
+  show (Node_Set keyMap _ valNode _) =
     "KeyMap:\n " ++ show keyMap ++ "\n"  ++
     "ValNode:\n " ++ show valNode ++ "\n" 
 
@@ -117,25 +119,19 @@ instance Show Node_Sym where
 
 
 
-
----------------------------------------------------------------------
 -- Lenses
----------------------------------------------------------------------
-
 makeLenses ''Node_Val
-
-
 
 
 ---------------------------------------------------------------------
 -- Constructors
 ---------------------------------------------------------------------
 
-newValIndex ∷ ValIndex a
+newValIndex ∷ ValIndex
 newValIndex = ValIndex
-  { _valNode     =  newValNode
-  , _itemMap     =  HMS.empty
-  , _keyCounter  =  0
+  { _valNode        =  newValNode
+  , _valMap         =  HMS.empty
+  , _valKeyCounter  =  0
   }
 
 
@@ -143,7 +139,7 @@ newValIndex = ValIndex
 -- | Lazily construct a value node
 newValNode ∷ Node_Val
 newValNode = Node_Val
-  { _node_Set   = Node_Set HMS.empty Empty
+  { _node_Set   = Node_Set HMS.empty HMS.empty newValNode 0
   , _node_Arr   = Node_Arr Seq.empty
   , _node_Text  = Node_Text HMS.empty
   , _node_Num   = Node_Num Map.empty
@@ -157,18 +153,19 @@ newValNode = Node_Val
 -- Insert
 ---------------------------------------------------------------------
 
-insert ∷ Val → a → ValIndex a → ValIndex a
-insert val item (ValIndex valNode itemMap keyCounter) =
+-- | Insert
+-- Values are verified by the system to be unique before inserted.
+insert ∷ Val → ValIndex → ValIndex
+insert val (ValIndex valNode valItemMap valKeyCounter) =
   ValIndex {
-    _valNode    = insertVal val keyCounter valNode
-  , _itemMap    = HMS.insert keyCounter item itemMap
-  , _keyCounter = keyCounter + 1
+    _valNode       = insertVal val valKeyCounter valNode
+  , _valMap        = HMS.insert valKeyCounter val valItemMap
+  , _valKeyCounter = valKeyCounter + 1
   }
 
 
 
 insertVal ∷ Val → MatchKey → Node_Val → Node_Val
-insertVal val             key Empty = insertVal val key newValNode
 insertVal (Val_Set  set ) key node  = node & node_Set  %~ insertSet  set key
 insertVal (Val_Arr  arr ) key node  = node & node_Arr  %~ insertArr  arr  key
 insertVal (Val_Text text) key node  = node & node_Text %~ insertText text key
@@ -181,18 +178,18 @@ insertVal _               _   node  = node
 -- Set represents a single val that with multiple values
 -- Insert each set item into the val node
 insertSet ∷ Set → MatchKey → Node_Set → Node_Set
-insertSet (Set set) key (Node_Set keyMap valNode) =
-  let keyMap'  = HMS.insert key (HS.size set) keyMap
-      valNode' = HS.foldl' addValToNode valNode set
-  in  Node_Set keyMap' valNode'
+insertSet (Set set) key (Node_Set keyMap sizeMap valNode counter) =
+  let counter'  = counter + setSize
+      sizeMap'  = HMS.insert key setSize sizeMap
+      valNode'  = L.foldl' addSetElemToNode valNode
+                      (HS.toList set `L.zip` setKeys)
+      keyMap'   = L.foldl' addElemKeyToMap keyMap setKeys
+  in  Node_Set keyMap' sizeMap' valNode' counter'
   where
-    addValToNode node  val = insertVal val key node
-
-
-
---insertPair ∷ Pair → MatchKey → Node_Pair → Node_Pair
---insertPair (Pair a b) key (Node_Pair nodeA nodeB) =
---  Node_Pair (insertVal a key nodeA) (insertVal b key nodeB)
+    setSize   = HS.size set
+    setKeys   = [counter..(counter + setSize -1)]
+    addSetElemToNode node (elem, elemKey) = insertVal elem elemKey node
+    addElemKeyToMap currKeyMap elemKey = HMS.insert elemKey key currKeyMap
 
 
 
@@ -230,20 +227,18 @@ insertSym sym key (Node_Sym symMap) = Node_Sym $
 -- Lookup
 ---------------------------------------------------------------------
 
-
-lookup ∷ Type → ValIndex a → [a]
-lookup ty (ValIndex valNode itemMap _) =
+lookup ∷ Type → ValIndex → [Val]
+lookup ty (ValIndex valNode valMap _) =
   let matchKeys = Set.toList $ lookupVal ty valNode
   in  (flip fmap) matchKeys (\matchKey →
-        case HMS.lookup matchKey itemMap of
-          Just item → item
-          Nothing   → error "Should not happen"
+        case HMS.lookup matchKey valMap of
+          Just val → val
+          Nothing  → error "Should not happen"
       )
 
 
 
 lookupVal ∷ Type → Node_Val → KeySet
-lookupVal _                Empty = Set.empty
 lookupVal (Ty_Set  setTy ) node  = lookupSet  setTy  $ _node_Set  node
 lookupVal (Ty_Arr  arrTy ) node  = lookupArr  arrTy  $ _node_Arr  node
 lookupVal (Ty_And  andTy ) node  = lookupAnd  andTy node
@@ -261,23 +256,37 @@ lookupVal (Ty_Any        ) node  = (lookupSet  AnySet    $ _node_Set  node)
 
 
 lookupSet ∷ SetTy → Node_Set → KeySet
-lookupSet (WithElem    elemTy  ) (Node_Set _      valNode) =
-  lookupVal elemTy valNode
---lookupSet (WithoutElem elemTy  ) (Node_Set setMap valNode) =
---  (Set.fromList $ HMS.keys setMap) `Set.difference`
---  lookupVal elemTy valNode 
-lookupSet (SetWithSize num     ) (Node_Set setMap _      ) =
-  let size = case num of
-              (Z i) → i
-              (R d) → maybe (-1) id $ doubleToInt d
-  in  if size < 0
-        then Set.empty
-        else Set.fromList $ HMS.keys $ HMS.filter (==size) setMap
---lookupSet (IsSet       tyList  ) (Node_Set _      valNode) =
---  L.foldl' Set.intersection Set.empty $
---    L.map (flip lookupVal $ valNode) tyList
-lookupSet AnySet                 (Node_Set setMap _      ) =
-  Set.fromList $ HMS.keys setMap
+lookupSet (WithElem    elemTy) (Node_Set setMap _ valNode _      ) =
+  let elemKeys = lookupVal elemTy valNode
+      collectSetKeys setKeys elemKey = 
+        setKeys `Set.union` 
+        (maybe Set.empty Set.singleton $ HMS.lookup elemKey setMap)
+  in Set.foldl' collectSetKeys Set.empty elemKeys
+lookupSet (IsSet setTys      ) (Node_Set setMap sizeMap valNode _) =
+  let unionElemMatches matchKeys nextElemTy = 
+        matchKeys `Set.union` lookupVal nextElemTy valNode
+      countSetMatches matchMap elemKey =
+        case HMS.lookup elemKey setMap of
+          Just setKey → Map.insertWith (+) setKey 1 matchMap
+          Nothing     → error "Should not happen (refactor)"
+      filterTotalMatches matches setKey keyCount =
+        case HMS.lookup setKey sizeMap of
+          Just setSize  →  if setSize == keyCount
+                              then Set.insert setKey matches
+                              else matches
+          Nothing       →  error "should not happen (refactor)"
+  in      setTys  
+      >$> HS.foldl' unionElemMatches Set.empty         
+      >>> Set.foldl' countSetMatches Map.empty
+      >>> Map.foldlWithKey' filterTotalMatches Set.empty
+lookupSet (SetWithSize num   ) (Node_Set _ sizeMap _ _) =
+  let size = maybe 0 id $ asInt num
+  in  if size > 0
+        then  Set.fromList $ HMS.keys $
+                HMS.filter (==size) sizeMap
+        else Set.empty
+lookupSet AnySet                  (Node_Set _ sizeMap _ _) =
+  Set.fromList $ HMS.keys sizeMap
 
 
 

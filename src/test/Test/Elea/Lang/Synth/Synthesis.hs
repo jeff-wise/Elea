@@ -7,7 +7,7 @@ import Test.Prelude
 import qualified Test.Data.System as Sys
 
 import Elea.Lang.Types
-import Elea.Lang.Synthesis
+import Elea.Lang.Synth.Synthesis
 
 
 import Control.Monad.State.Lazy (runState)
@@ -20,14 +20,6 @@ import qualified Data.Sequence as Seq
 
 tests_Synthesis = testGroup "Synthesis" [ test_syn_2plus2 ]
  
-
-
-addCompSyms = do
-  sum ← newSymbol "Sum"
-  return (sum)
-
--- Add some symbols to the system
-( (sym_sum), testSystem) = runState addCompSyms Sys.testSystem
 
 
 -- | Synthesize 2 + 2
@@ -48,14 +40,14 @@ test_syn_2plus2 = testCase "2 + 2" $
                       , _resultId   = Val_Sym $ sym_sum
                       }
                     ]
-      , _synPartT = Particle (Val_Sym $ sym_sum)
+      , _synPartT = Particle (Val_Text $ Text "Sum")
                              (Val_Var $ Var $ Val_Sym sym_sum)
       })
 
   @?=
 
     -- Should create a "4" particle 
-    Particle (Val_Sym $ sym_sum) (Val_Num $ Z 4)
+    Particle (Val_Text $ Text "Sum") (Val_Num $ Z 4)
  
 
 

@@ -1,27 +1,22 @@
 
 
-module Elea.Lang.Val (
+module Elea.Lang.Atom.Val (
     at
-  , showSym  
   , doubleToInt
   , asInt
   , numEven, numOdd
   , isInteger
-  , eval
   , pair
   ) where
 
 
 
 import Elea.Prelude
-import Elea.Lang.Types
+import Elea.Lang.Atom.Types
 
 
-
-import qualified Data.HashMap.Strict as HMS
-import qualified Data.HashSet as HS
 import qualified Data.Sequence as Seq
-import qualified Data.Text as T
+
 
 
 
@@ -43,8 +38,8 @@ at (Arr arr) i
 -- symbols that don't exist. Symbols are only 
 -- kind of 'custom' atomic datatype.
 -- Use symbols for authentication/security?
-showSym ∷ Int → System → Maybe T.Text
-showSym symId system = HMS.lookup symId (system ^. symTable.tblMap)
+--showSym ∷ Int → System → Maybe T.Text
+--showSym symId system = HMS.lookup symId (system^.sysSymTable.tblMap)
 
 
 
@@ -85,18 +80,4 @@ isInteger (R d) = case doubleToInt d of
                     Nothing → False
 
 
-
-
-
-eval ∷ Env → Val → Val
-eval env val = eval' val
-  where
-    eval' ∷ Val → Val
-    --eval' (Val_Pair     (Pair  a b)) = Val_Pair $ Pair (eval' a) (eval' b)
-    eval' (Val_Set      (Set   set)) = Val_Set $ Set $ HS.map eval' set
-    eval' (Val_Arr      (Arr arr)) = Val_Arr $ Arr $ fmap eval' arr
-    eval' (Val_Var  var@(Var name )) = case HMS.lookup name env of
-                                        Just x  → x
-                                        Nothing → Val_Var $ var
-    eval' leafVal                   = leafVal
 

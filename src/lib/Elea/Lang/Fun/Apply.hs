@@ -8,17 +8,37 @@
 -- The provided functions are mostly wrappers around
 -- Haskell functions.
 ---------------------------------------------------------------------
-module Elea.Lang.Apply (apply) where
+module Elea.Lang.Fun.Apply (apply) where
 
 
 import Elea.Prelude
-import Elea.Lang.Types
-import Elea.Lang.Type
+import Elea.Lang.Atom.Types
+import Elea.Lang.Atom.Type
+
 
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as Set
 import qualified Data.List.Stream as L
 import qualified Data.Text as T
+
+
+
+
+---------------------------------------------------------------------
+-- Functions
+---------------------------------------------------------------------
+
+type FunDict = HMS.HashMap T.Text FunDef
+
+data FunDef = FunDef
+  { _funParamTys  ∷  [Type]
+  , _funReturnTy  ∷  Type
+  , _funExec      ∷  [Val] → Val
+  }
+
+
+
+
 
 
 -- | Mapping of Elea functions to Haskell functions

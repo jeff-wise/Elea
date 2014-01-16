@@ -1,14 +1,16 @@
 
 
-module Elea.Lang.Index.Type where
+module Elea.Lang.Index.Type (
+    TypeIndex
+  , newTypeIndex
+  , insert, lookup
+  ) where
 
 
 import Elea.Prelude
-import Elea.Lang.Types
-import Elea.Lang.Val
+import Elea.Lang.Atom.Types
+import Elea.Lang.Atom.Val
 
-
-import Control.Lens (_1, _2)
 
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as HS
@@ -25,31 +27,30 @@ import qualified Data.Text as T
 -- TODO deletion
 
 
+
+
 ---------------------------------------------------------------------
 -- Types
 ---------------------------------------------------------------------
 
--- | Index Match Keys
--- Used to uniquely identify parts of types
--- in branches of the index.
 type MatchKey = Int
 type KeySet = Set.Set MatchKey
 
 
 
+
 -- | Type Index
 -- Explanation...
-data TypeIndex a = TypeIndex
-  { _tyNode     ∷ Node_Ty
-  , _itemMap    ∷ HMS.HashMap MatchKey a
-  , _keyCounter ∷ Int
+data TypeIndex = TypeIndex
+  { _tyNode       ∷ Node_Ty
+  , _tyMap        ∷ HMS.HashMap MatchKey Type
+  , _tyKeyCounter ∷ Int
   }
 
 
 
 data Node_Ty = Node_Ty
   { _node_SetTy   ∷  Node_SetTy
-  , _node_PairTy  ∷  Node_PairTy
   , _node_ArrTy   ∷  Node_ArrTy
   , _node_AndTy   ∷  Node_AndTy
   , _node_TextTy  ∷  Node_TextTy
@@ -62,16 +63,7 @@ data Node_Ty = Node_Ty
 data Node_SetTy = Node_SetTy
   { _withElemTy     ∷  Node_Ty
   , _setWithSizeTy  ∷  HMS.HashMap Int KeySet
-  , _isSetTy        ∷  (HMS.HashMap MatchKey Int, Node_Ty)
   , _anySetTy       ∷  KeySet
-  }
-
-
-
-data Node_PairTy = Node_PairTy
-  { _isPairTy ∷ (Node_Ty, Node_Ty)
-  , _firstTy  ∷ Node_Ty
-  , _secondTy ∷ Node_Ty
   }
 
 
@@ -112,24 +104,35 @@ data Node_NumTy = Node_NumTy
 
 
 data Node_SymTy = Node_SymTy
-  { _isSymTy  ∷  HMS.HashMap Symbol KeySet }
+  { _isSymTy  ∷  HMS.HashMap Symbol KeySet
+  , _anySymTy ∷  KeySet
+  }
 
 
 
--- | Lenses
+-- Lenses
 makeLenses ''Node_Ty
 makeLenses ''Node_SetTy
-makeLenses ''Node_PairTy
 makeLenses ''Node_ArrTy
 makeLenses ''Node_TextTy
 makeLenses ''Node_NumTy
+makeLenses ''Node_SymTy
 
 
 
 
 ---------------------------------------------------------------------
--- Create a Type Node
+-- Constructors
 ---------------------------------------------------------------------
+
+
+newTypeIndex ∷ TypeIndex
+newTypeIndex = TypeIndex
+  { _tyNode       = newTypeNode
+  , _tyMap        = HMS.empty
+  , _tyKeyCounter = 0
+  }
+
 
 -- | Lazily build a type node 
 newTypeNode ∷ Node_Ty
@@ -137,14 +140,8 @@ newTypeNode = Node_Ty
   { _node_SetTy   = Node_SetTy
                       { _withElemTy    = newTypeNode
                       , _setWithSizeTy = HMS.empty
-                      , _isSetTy       = (HMS.empty, newTypeNode)
                       , _anySetTy      = Set.empty
                       }  
-  , _node_PairTy  = Node_PairTy
-                      { _isPairTy = (newTypeNode, newTypeNode)
-                      , _firstTy  = newTypeNode
-                      , _secondTy = newTypeNode
-                      }
   , _node_ArrTy   = Node_ArrTy
                       { _isArrTy   = Seq.empty 
                       , _withIdxTy = HMS.empty
@@ -167,7 +164,10 @@ newTypeNode = Node_Ty
                       , _nonNegTy = Set.empty
                       , _anyNumTy = Set.empty
                       }
-  , _node_SymTy   = Node_SymTy HMS.empty
+  , _node_SymTy   = Node_SymTy
+                      { _isSymTy  = HMS.empty
+                      , _anySymTy = Set.empty
+                      }
   }
 
 
@@ -179,12 +179,12 @@ newTypeNode = Node_Ty
 
 
 
-insert ∷ Type → a → TypeIndex a → TypeIndex a
-insert ty item (TypeIndex tyNode itemMap keyCounter) =
+insert ∷ Type → TypeIndex → TypeIndex
+insert ty (TypeIndex tyNode tyMap tyKeyCounter) =
   TypeIndex {
-      _tyNode     = insertTy ty keyCounter tyNode
-    , _itemMap    = HMS.insert keyCounter item itemMap
-    , _keyCounter = keyCounter + 1
+      _tyNode       = insertTy ty tyKeyCounter tyNode
+    , _tyMap        = HMS.insert tyKeyCounter ty tyMap
+    , _tyKeyCounter = tyKeyCounter + 1
   }
 
 
@@ -192,8 +192,6 @@ insert ty item (TypeIndex tyNode itemMap keyCounter) =
 insertTy ∷ Type → MatchKey → Node_Ty → Node_Ty
 insertTy (Ty_Set  setTy         ) key tyNode =
   tyNode & node_SetTy  %~ (insertSetTy   setTy  key)
-insertTy (Ty_Pair pairTy        ) key tyNode =
-  tyNode & node_PairTy %~ (insertPairTy  pairTy key)
 insertTy (Ty_Arr  arrTy         ) key tyNode =
   tyNode & node_ArrTy  %~ (insertArrTy   arrTy  key)
 insertTy (Ty_And  andTy         ) key tyNode =
@@ -223,30 +221,12 @@ insertSetTy (SetWithSize num   ) key setTyNode =
         then setTyNode
         else setTyNode & setWithSizeTy %~
               HMS.insertWith Set.union size (Set.singleton key)
-insertSetTy (IsSet       tyList) key setTyNode =
-  let update (setLenMap, tyNode) =
-        let addTy node ty = insertTy ty key node
-        in  ( HMS.insert key (L.length tyList) setLenMap
-            , L.foldl' addTy tyNode tyList )
-  in  setTyNode & isSetTy %~ update
 insertSetTy AnySet               key setTyNode =
   setTyNode & anySetTy %~ (Set.insert key)
 
 
 
-insertPairTy ∷ PairTy → MatchKey → Node_PairTy → Node_PairTy
-insertPairTy (IsPair ty1 ty2) key pairTyNode =
-  pairTyNode & isPairTy %~ 
-    (\(tyNode1, tyNode2) → ( insertTy ty1 key tyNode1
-                            , insertTy ty2 key tyNode2 )
-    )
-insertPairTy (First  ty     ) key pairTyNode =
-  pairTyNode & firstTy %~ insertTy ty key
-insertPairTy (Second ty     ) key pairTyNode =
-  pairTyNode & secondTy %~ insertTy ty key
-
-
-
+-- TODO negative indices
 insertArrTy ∷ ArrayTy → MatchKey → Node_ArrTy → Node_ArrTy
 insertArrTy (IsArray   tySeq ) key arrTyNode = 
   let go EmptyL          EmptyL                 = Seq.empty
@@ -258,13 +238,13 @@ insertArrTy (IsArray   tySeq ) key arrTyNode =
         <| go (viewl remTys) (viewl remTyNodes)
   in  arrTyNode & isArrTy %~ (go (viewl tySeq) . viewl)
 insertArrTy (WithIndex num ty) key arrTyNode =
-  let mIdx = case num of
-              (Z i) → Just i
-              (R d) → doubleToInt d
-  in  case mIdx of
-        Just idx → arrTyNode & withIdxTy %~ 
-                      (HMS.adjust (insertTy ty key) idx)
-        Nothing  → arrTyNode
+  case asInt num of
+    Just idx → arrTyNode & withIdxTy %~ 
+                  HMS.insertWith 
+                    (\_ node → insertTy ty key node)
+                    idx
+                    (insertTy ty key newTypeNode)
+    Nothing  → arrTyNode
 insertArrTy AnyArray           key arrTyNode =
   arrTyNode & anyArrTy %~ (Set.insert key)
 
@@ -322,8 +302,12 @@ insertNumTy AnyNumber         key numTyNode =
 
 
 insertSymTy ∷ SymbolTy → MatchKey → Node_SymTy → Node_SymTy
-insertSymTy (IsSymbol sym) key (Node_SymTy symMap) = Node_SymTy $
-  HMS.insertWith Set.union sym (Set.singleton key) symMap
+insertSymTy (IsSymbol sym) key symTyNode =
+  symTyNode & isSymTy %~ 
+    HMS.insertWith Set.union sym (Set.singleton key)
+insertSymTy (AnySymbol   ) key symTyNode =
+  symTyNode & anySymTy %~ (Set.insert key)
+    
 
 
 
@@ -332,16 +316,15 @@ insertSymTy (IsSymbol sym) key (Node_SymTy symMap) = Node_SymTy $
 -- Lookup
 ---------------------------------------------------------------------
 
-lookup ∷ Val → TypeIndex a → [a]
-lookup val (TypeIndex tyNode itemMap _) =
-  let getItem key = fromJust $ HMS.lookup key itemMap
+lookup ∷ Val → TypeIndex → [Type]
+lookup val (TypeIndex tyNode tyMap _) =
+  let getItem key = fromJust $ HMS.lookup key tyMap
   in  L.map getItem $ Set.toList $ lookupTy val tyNode
 
 
 
 lookupTy ∷ Val → Node_Ty → KeySet
 lookupTy (Val_Set  set ) tyNode = lookupSetTy  set  (tyNode ^. node_SetTy )
-lookupTy (Val_Pair pair) tyNode = lookupPairTy pair (tyNode ^. node_PairTy)
 lookupTy (Val_Arr  arr ) tyNode = lookupArrTy  arr  (tyNode ^. node_ArrTy )
 lookupTy (Val_Text text) tyNode = lookupTextTy text (tyNode ^. node_TextTy)
 lookupTy (Val_Num  num ) tyNode = lookupNumTy  num  (tyNode ^. node_NumTy )
@@ -357,48 +340,40 @@ lookupSetTy (Set set) setTyNode =
         in  Set.foldl' Set.union Set.empty matches
       withSizeKeys  = maybe Set.empty id $
         HMS.lookup (HS.size set) (setTyNode ^. setWithSizeTy)
-  in  withElemsKeys `Set.union` withSizeKeys
+      anySetKeys    = setTyNode ^. anySetTy
+  in  withElemsKeys `Set.union` withSizeKeys `Set.union` anySetKeys
 
-
-
-lookupPairTy ∷ Pair → Node_PairTy → KeySet
-lookupPairTy (Pair a b) pairTyNode =
-  let isPairKeys   =  
-        let (tyNodeA, tyNodeB) = pairTyNode ^. isPairTy
-        in  lookupTy a tyNodeA `Set.intersection`
-            lookupTy b tyNodeB
-      isFirstKeys  = lookupTy a $ pairTyNode ^. isPairTy._1
-      isSecondKeys = lookupTy b $ pairTyNode ^. isPairTy._2
-  in  isPairKeys `Set.union` isFirstKeys `Set.union` isSecondKeys
 
 
 
 lookupArrTy ∷ Array → Node_ArrTy → KeySet
-lookupArrTy arrVal@(Arr arr) arrTyNode =
+lookupArrTy (Arr arr) arrTyNode =
   let isArrKeys  =  
-        let go EmptyL           EmptyL                 keys = keys
-            go _                EmptyL                 _    = Set.empty
-            go EmptyL           _                      keys = keys
-            go (val :< remVals) (tyNode :< remTyNodes) keys = 
-              go (viewl remVals) (viewl remTyNodes) $
-                Set.intersection keys (lookupTy val tyNode)
-        in  go (viewl arr) (viewl (arrTyNode ^. isArrTy)) Set.empty
+        let go _              EmptyL                    = Set.empty
+            go EmptyL         _                         = Set.empty
+            go (val :< remVals) (tyNode :< remTyNodes)
+              | Seq.null remVals  = lookupTy val tyNode
+              | otherwise         = Set.intersection
+                                      (lookupTy val tyNode)
+                                      (go (viewl remVals) (viewl remTyNodes))
+        in  go (viewl arr) (viewl (arrTyNode ^. isArrTy))
       withIdxKeys = 
-        let unionKeysWithIdx prevMatches idx tyNode = 
-              let matchesAtCurrIdx = case arrVal `at` idx of
-                                       Just val → lookupTy val tyNode
-                                       Nothing  → Set.empty
-              in  Set.union prevMatches matchesAtCurrIdx
-        in  HMS.foldlWithKey' unionKeysWithIdx Set.empty
-              (arrTyNode ^. withIdxTy)
+        let unionKeysWithIdx prevMatches nextIndex nextElem = 
+              prevMatches
+                `Set.union`
+              (maybe 
+                Set.empty 
+                (lookupTy nextElem)
+                (HMS.lookup nextIndex $ arrTyNode ^. withIdxTy))
+        in  Seq.foldlWithIndex unionKeysWithIdx Set.empty arr
       anyArrKeys = arrTyNode ^. anyArrTy
   in  isArrKeys `Set.union` withIdxKeys `Set.union` anyArrKeys
 
 
 
-lookupAndTy ∷ Val → Node_AndTy → KeySet
-lookupAndTy val (Node_AndTy (tyNode1, tyNode2)) = 
-  lookupTy val tyNode1 `Set.intersection` lookupTy val tyNode2
+--lookupAndTy ∷ Val → Node_AndTy → KeySet
+--lookupAndTy val (Node_AndTy (tyNode1, tyNode2)) = 
+--  lookupTy val tyNode1 `Set.intersection` lookupTy val tyNode2
 
 
 
@@ -413,8 +388,11 @@ lookupTextTy text textTyNode =
 
 
 lookupSymTy ∷ Symbol → Node_SymTy → KeySet
-lookupSymTy symbol (Node_SymTy symMap) =
-  maybe Set.empty id $ HMS.lookup symbol symMap
+lookupSymTy symbol symTyNode =
+  let isSymKeys   = maybe Set.empty id $
+                      HMS.lookup symbol (symTyNode ^. isSymTy)
+      anySymKeys  = symTyNode ^. anySymTy
+  in  isSymKeys `Set.union` anySymKeys
 
 
 
@@ -434,15 +412,15 @@ lookupNumTy num numTyNode =
             belowUB = Map.foldl' Set.union Set.empty $
                         snd $ Map.split num ubMap
             areUB   = maybe Set.empty id $ Map.lookup num ubMap
-        in  aboveLB `Set.union` areLB `Set.union` 
-            belowUB `Set.union` areUB
+        in  (aboveLB `Set.union` areLB) `Set.intersection` 
+            (belowUB `Set.union` areUB)
       evenKeys   = if numEven   num then numTyNode ^. evenTy
                                     else Set.empty 
       oddKeys    = if numOdd    num then numTyNode ^. oddTy
                                     else Set.empty 
       intKeys    = if isInteger num then numTyNode ^. intTy
                                     else Set.empty 
-      nonNegKeys = if num > (Z 0)   then numTyNode ^. nonNegTy 
+      nonNegKeys = if num >= (Z 0)  then numTyNode ^. nonNegTy 
                                     else Set.empty 
       anyNumKeys = numTyNode ^. anyNumTy
   in  L.foldl' Set.union Set.empty [ isNumKeys, gtKeys, ltKeys,

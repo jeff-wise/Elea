@@ -1,15 +1,15 @@
 
 
 
-module Elea.Lang.Type where
+module Elea.Lang.Atom.Type where
 
 
 import Elea.Prelude
-import Elea.Lang.Types
-import Elea.Lang.Val (at, doubleToInt, isInteger)
+import Elea.Lang.Atom.Types
+import Elea.Lang.Atom.Val (at, doubleToInt, isInteger)
 
 import qualified Data.Foldable as F
-import qualified Data.HashSet as Set
+import qualified Data.HashSet as HS
 import qualified Data.List.Stream as L
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
@@ -17,21 +17,18 @@ import qualified Data.Text as T
 
 
 
-
-{-
--- Convert a value x to a type s
--- such that s is a subset of any type
--- t which is a also a type of x
-
+-- | Convert a value x to a type s such that if
+-- t is also a type of x, then s is a subset of t
 typeOf ∷ Val → Type
-typeOf (Val_Set  set )  = Set_EQ $ map typeOf $ elems set
-typeOf (Val_Pair a b )  = Pair_EQ $ typeOf a $ typeOf b
-typeOf (Val_Arr  seq )  = Arr_EQ $ typeOf <$> seq
-typeOf (Val_Text text)  = Text_EQ text
-typeOf (Val_Num  num )  = Num_EQ num
-typeOf (Val_Sym  sym )  = Sym_EQ sym
-typeOf (Dtm  dtm )  = Dtm_EQ dtm
--}
+typeOf (Val_Set  (Set  set)) = Ty_Set $ IsSet $ HS.map typeOf set
+typeOf (Val_Arr  (Arr  arr)) = Ty_Arr $ IsArray (typeOf <$> arr)
+typeOf (Val_Text text      ) = Ty_Text $ IsText text
+typeOf (Val_Num  num       ) = Ty_Num $ IsNumber num
+typeOf (Val_Sym  sym       ) = Ty_Sym $ IsSymbol sym
+typeOf (Val_Dtm  dtm       ) = Ty_Dtm $ IsDateTime dtm
+--typeOf (Val_Var  var       ) = IsVariable
+--typeOf (Val_Err  err       ) = IsError err
+
 
 
 
@@ -59,8 +56,8 @@ isType _                _               = False
 
 isSetType ∷ SetTy → Set → Bool
 isSetType (WithElem    ty      ) (Set set) = 
-  L.or $ L.map (isType ty) (Set.toList set)
-isSetType (SetWithSize (Z size)) (Set set) = Set.size set == size
+  L.or $ L.map (isType ty) (HS.toList set)
+isSetType (SetWithSize (Z size)) (Set set) = HS.size set == size
 -- isSetType (IsSet       elemTys ) (Set set) =
 isSetType AnySet                  _         = True
 isSetType _                       _         = False

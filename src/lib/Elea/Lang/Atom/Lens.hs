@@ -1,13 +1,18 @@
 
 
 
-module Elea.Lang.Lens (get) where
+module Elea.Lang.Atom.Lens
+  ( Lens (..), SetLens (..), ArrayLens (..)
+  , get
+  , getFromFst, getFromSnd, getFromBoth
+  , atIndex
+  ) where
 
 
 import Elea.Prelude
-import Elea.Lang.Types
-import Elea.Lang.Type (isType)
-import Elea.Lang.Val
+import Elea.Lang.Atom.Types
+import Elea.Lang.Atom.Type
+import Elea.Lang.Atom.Val (asInt, at)
 
 
 import qualified Data.Foldable as F
@@ -16,6 +21,50 @@ import qualified Data.List.Stream as L
 
 
 
+
+---------------------------------------------------------------------
+-- Elea Value Lenses
+---------------------------------------------------------------------
+
+-- | Value Lens
+data Lens = 
+    Lens_Set    SetLens
+  | Lens_Arr    ArrayLens
+  | Lens_This
+
+
+-- | Set Lens
+data SetLens = 
+    AllSuchThat Type Lens
+  | AnySuchThat Type Lens
+
+
+-- | Array Lens
+data ArrayLens =
+    AtIndices [(Number, Lens)]
+  | EachIndex Lens
+
+
+-- | Lens convenience constructors
+getFromFst ∷ Lens → Lens
+getFromFst lens = Lens_Arr $ AtIndices [(Z 0, lens)]
+
+
+getFromSnd ∷ Lens → Lens
+getFromSnd lens = Lens_Arr $ AtIndices [(Z 1, lens)]
+
+
+getFromBoth ∷ Lens → Lens → Lens
+getFromBoth lensA lensB = Lens_Arr $
+    AtIndices [(Z 0, lensA), (Z 1, lensB)]
+
+
+atIndex ∷ Number → Lens → Lens
+atIndex idx lens = Lens_Arr $ AtIndices [(idx, lens)]
+
+
+
+-- | Get a value referenced by a 'Lens'
 get ∷ Lens → Val → Maybe Val
 get lens val = asVal $ getFromVal lens val
   where

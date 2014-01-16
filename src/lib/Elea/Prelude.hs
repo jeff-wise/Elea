@@ -111,15 +111,21 @@ module Elea.Prelude
       -- ** Command line args
     , TimeOfDay, Day
     , (Control.Lens.Getter.^.)
+    , Control.Lens.Getter.view
     , (Control.Lens.Setter..~)
     , (Control.Lens.Setter.%~)
+    , Control.Lens.Setter.over
     , (Control.Lens.Combinators.&)
     , Control.Lens.TH.makeLenses
     , module Debug.Trace
-    , (<|)
+    , (<|), (|>), (><)
     , viewl
     , ViewL (..)
     , (L.++)
+    , (>$>)
+    , module Control.Concurrent.STM
+    , module Control.Concurrent
+    , judge
     ) where
 
 import qualified Prelude
@@ -138,6 +144,9 @@ import qualified Control.Monad
 import Data.Word (Word8, Word32, Word64, Word)
 import Data.Int (Int32, Int64)
 
+
+import Control.Concurrent.STM
+import Control.Concurrent
 
 import qualified Data.Maybe
 import qualified Data.Either
@@ -159,7 +168,7 @@ import qualified Control.Lens.TH
 
 
 -- Containers
-import Data.Sequence (Seq, (<|), viewl, ViewL (..))
+import Data.Sequence (Seq, (<|), (|>), viewl, ViewL (..), (><))
 import Data.HashMap.Strict (HashMap)
 import Data.HashSet  as Set (HashSet, toList)
 
@@ -177,6 +186,17 @@ import Data.Time.LocalTime (TimeOfDay(..))
 -- For added instances/functions
 import qualified Data.Foldable as F
 import Data.Fixed (Fixed, E12, showFixed)
+
+
+
+
+judge ∷ (a → Bool) → (a → b) → (a → b) →
+         (a → b)
+judge detector reward punish statement =
+  if detector statement
+    then reward statement
+    else punish statement
+
 
 
 
@@ -204,4 +224,10 @@ instance Hashable (Fixed E12) where
 instance Hashable Day where
   hashWithSalt = hashUsing toModifiedJulianDay
 
+
+
+(>$>) ∷ a → (a → b) → b
+(>$>) a f = f a
+
+infixr 0 >$>
 

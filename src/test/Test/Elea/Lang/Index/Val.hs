@@ -1,6 +1,6 @@
 
 
-module Test.Elea.Index.Val (tests_ValIndex) where
+module Test.Elea.Lang.Index.Val (tests_ValIndex) where
 
 
 
@@ -8,12 +8,14 @@ import Test.Prelude
 import Test.Data.RPG
 import Test.Data.System
 
-import Elea.Index.Val
-import Elea.Lang.Types
+
+import Elea.Lang.Index.Val
+import Elea.Lang.Atom.Types
 
 
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as Seq
+import qualified Data.Text as T
 
 
 
@@ -31,24 +33,24 @@ tests_ValIndex =  testGroup "Value Index" [
 
 -- flip lookup to make writing tests neater
 -- and convert to set
-testLookup valIndex ty = HS.fromList $ lookup ty valIndex
+testLookup idx ty = HS.fromList $ lookup ty idx
 
 
 
-
-rpgValIndex = 
-  let addRpgVals =  insert (_partId dungeonP  ) dungeonP
-                >>> insert (_partId cityP     ) cityP
-                >>> insert (_partId castleP   ) castleP
-                >>> insert (_partId mineP     ) mineP
-                >>> insert (_partId bartenderP) bartenderP
-                >>> insert (_partId priestP   ) priestP
-                >>> insert (_partId beggarP   ) beggarP
-                >>> insert (_partId partySetP ) partySetP
-                >>> insert (_partId partyArrP ) partyArrP
-                >>> insert (_partId heroP     ) heroP
-                >>> insert (_partId warlockP  ) warlockP
-                >>> insert (_partId dragonP   ) dragonP
+valIndex ∷ ValIndex T.Text
+valIndex = 
+  let addRpgVals =  insert dungeonVal    "Dungeon"
+                >>> insert cityVal       "City"
+                >>> insert castleVal     "Castle"
+                >>> insert mineVal       "Mine"
+                >>> insert bartenderVal  "Bartender"
+                >>> insert priestVal     "Priest"
+                >>> insert beggarVal     "Beggar"
+                >>> insert partySetVal   "PartySet"
+                >>> insert partyArrVal   "PartyArr"
+                >>> insert heroVal       "Hero"
+                >>> insert warlockVal    "Warlock"
+                >>> insert dragonVal     "Dragon"
   in  addRpgVals newValIndex
 
  
@@ -57,10 +59,10 @@ rpgValIndex =
 tests_symbolLookup = testGroup "Symbol Lookup" [
   
   testCase "Only Dungeon identified by symbol Dungeon" $
-        testLookup rpgValIndex
+        testLookup valIndex
             (Ty_Sym $ IsSymbol $ sym_rpg^.entity.dungeon)
       @?=
-        HS.fromList [dungeonP]
+        HS.fromList ["Dungeon"]
   ]
                                
 
@@ -69,19 +71,19 @@ tests_symbolLookup = testGroup "Symbol Lookup" [
 tests_textLookup = testGroup "Text Lookup" [
 
     testCase "Only Priest identified by text Priest" $
-        testLookup rpgValIndex  (Ty_Text $ IsText $ Text "Priest")
+        testLookup valIndex  (Ty_Text $ IsText $ Text "Priest")
       @?=
-        HS.fromList [priestP]
+        HS.fromList ["Priest"]
 
   , testCase "Both Priest and Beggar identified by text of length 6" $
-        testLookup rpgValIndex  (Ty_Text $ WithTextLen (Z 6))
+        testLookup valIndex  (Ty_Text $ WithTextLen (Z 6))
       @?=
-        HS.fromList [priestP, beggarP]
+        HS.fromList ["Priest", "Beggar"]
   
   , testCase "Priest, Beggar, and Bartender have Textual IDs" $
-        testLookup rpgValIndex (Ty_Text AnyText)
+        testLookup valIndex (Ty_Text AnyText)
       @?=
-        HS.fromList [bartenderP, priestP, beggarP]
+        HS.fromList ["Bartender", "Priest", "Beggar"]
   ]
 
 
@@ -90,44 +92,44 @@ tests_textLookup = testGroup "Text Lookup" [
 tests_numLookup = testGroup "Number Lookup" [
 
     testCase "Only City has location EQUAL TO 4" $
-        testLookup rpgValIndex (Ty_Num $ IsNumber (Z 4))
+        testLookup valIndex (Ty_Num $ IsNumber (Z 4))
       @?=
-        HS.fromList [cityP]
+        HS.fromList ["City"]
  
 
   , testCase "Only the City and Mine have location GREATER THAN 2.0" $
-        testLookup rpgValIndex (Ty_Num $ GreaterThan (R 2.0))
+        testLookup valIndex (Ty_Num $ GreaterThan (R 2.0))
       @?=
-        HS.fromList [cityP, mineP]
+        HS.fromList ["City", "Mine"]
     
 
   , testCase "Only the Castle has location LESS THAN 2.5" $
-        testLookup rpgValIndex (Ty_Num $ LessThan (R 2.5))
+        testLookup valIndex (Ty_Num $ LessThan (R 2.5))
       @?=
-        HS.fromList [castleP]
+        HS.fromList ["Castle"]
   
 
   , testCase "Only the City has location IN RANGE of [4, 5.9]" $
-        testLookup rpgValIndex (Ty_Num $ InRange (Z 4) (R 5.9))
+        testLookup valIndex (Ty_Num $ InRange (Z 4) (R 5.9))
       @?=
-        HS.fromList [cityP]
+        HS.fromList ["City"]
 
 
   , testCase "Only the City has an EVEN location" $
-        testLookup rpgValIndex (Ty_Num $ Even)
+        testLookup valIndex (Ty_Num $ Even)
       @?=
-        HS.fromList [cityP]
+        HS.fromList ["City"]
 
 
   , testCase "Only the Castle has an ODD location" $
-        testLookup rpgValIndex (Ty_Num $ Odd)
+        testLookup valIndex (Ty_Num $ Odd)
       @?=
-        HS.fromList [castleP]
+        HS.fromList ["Castle"]
   
   , testCase "Only Castle, City, and Mine have numeric IDs" $
-        testLookup rpgValIndex (Ty_Num $ AnyNumber)
+        testLookup valIndex (Ty_Num $ AnyNumber)
       @?=
-        HS.fromList [castleP, cityP, mineP]
+        HS.fromList ["Castle", "City", "Mine"]
   ]
 
 
@@ -136,22 +138,31 @@ tests_numLookup = testGroup "Number Lookup" [
 tests_setLookup = testGroup "Set Lookup" [
 
     testCase "Party has hero" $ 
-        testLookup rpgValIndex 
+        testLookup valIndex 
             (Ty_Set $ WithElem $
                 Ty_Sym $ IsSymbol $ sym_rpg^.entity.hero)
       @?=
-        HS.fromList [partySetP]
+        HS.fromList ["PartySet"]
 
   , testCase "Party has 3 members" $ 
-        testLookup rpgValIndex (Ty_Set $ SetWithSize $ Z 3)
+        testLookup valIndex (Ty_Set $ SetWithSize $ Z 3)
       @?=
-        HS.fromList [partySetP]
+        HS.fromList ["PartySet"]
 
   , testCase "Party, Hero, Warlock, and Dragon are Sets" $
-        testLookup rpgValIndex (Ty_Set AnySet)
+        testLookup valIndex (Ty_Set AnySet)
       @?=
-        HS.fromList [partySetP, heroP, warlockP, dragonP]
+        HS.fromList ["PartySet", "Hero", "Warlock", "Dragon"]
 
+  , testCase "Party contains exactly Hero, Warlock, and Rogue" $
+        testLookup valIndex (Ty_Set $ IsSet $ HS.fromList [
+              Ty_Sym $ IsSymbol $ sym_rpg^.entity.hero
+            , Ty_Sym $ IsSymbol $ sym_rpg^.entity.warlock
+            , Ty_Sym $ IsSymbol $ sym_rpg^.entity.rogue
+            ]
+          )
+      @?=
+        HS.fromList ["PartySet"]
   ]
 
 
@@ -160,25 +171,25 @@ tests_setLookup = testGroup "Set Lookup" [
 tests_arrayLookup = testGroup "Set Lookup" [
 
     testCase "First party member is Hero" $
-        testLookup rpgValIndex 
+        testLookup valIndex 
             (Ty_Arr $ WithIndex (Z 0) 
                 (Ty_Sym $ IsSymbol $ sym_rpg^.entity.hero)
             )
       @?=
-        HS.fromList [partyArrP]
+        HS.fromList ["PartyArr"]
 
   , testCase "Third party member is Rogue" $
-        testLookup rpgValIndex 
+        testLookup valIndex 
             (Ty_Arr $
               WithIndex 
                 (Z 2) 
                 (Ty_Sym $ IsSymbol $ sym_rpg^.entity.rogue)
             )
       @?=
-        HS.fromList [partyArrP]
+        HS.fromList ["PartyArr"]
 
   , testCase "Party has Hero, Warlock, and Rogue" $
-        testLookup rpgValIndex
+        testLookup valIndex
           (Ty_Arr $ IsArray $ Seq.fromList [
                 Ty_Sym $ IsSymbol $ sym_rpg^.entity.hero
               , Ty_Sym $ IsSymbol $ sym_rpg^.entity.warlock
@@ -186,13 +197,13 @@ tests_arrayLookup = testGroup "Set Lookup" [
             ]
           )
       @?=
-        HS.fromList [partyArrP]
+        HS.fromList ["PartyArr"]
 
 
   , testCase "Party is an Array" $
-        testLookup rpgValIndex (Ty_Arr AnyArray)
+        testLookup valIndex (Ty_Arr AnyArray)
       @?=
-        HS.fromList [partyArrP]
+        HS.fromList ["PartyArr"]
   ]
 
 
@@ -201,56 +212,56 @@ tests_arrayLookup = testGroup "Set Lookup" [
 tests_complexLookup = testGroup "Complex Value Lookup" [ 
 
     testCase "Hero exists in index" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ pairTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.name)
                     (Ty_Text $ IsText $ Text "Hero")
                 )
       @?=
-        HS.fromList [heroP]
+        HS.fromList ["Hero"]
 
 
   , testCase "Warlock exists in index" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ pairTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.name)
                     (Ty_Text $ IsText $ Text "Warlock")
                 )
       @?=
-        HS.fromList [warlockP]
+        HS.fromList ["Warlock"]
 
 
   , testCase "Dragon exists in index" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ pairTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.name)
                     (Ty_Text $ IsText $ Text "Dragon")
                 )
       @?=
-        HS.fromList [dragonP]
+        HS.fromList ["Dragon"]
 
 
   , testCase "Hero, Dragon, and Warlock have names" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ fstTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.name)
                 )
       @?=
-        HS.fromList [heroP, warlockP, dragonP]
+        HS.fromList ["Hero", "Warlock", "Dragon"]
 
   
   , testCase "Dragon and Warlock have more than 250 health" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ pairTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.health)
                     (Ty_Num $ GreaterThan $ Z 250)
                 )
       @?=
-        HS.fromList [warlockP, dragonP]
+        HS.fromList ["Warlock", "Dragon"]
 
 
   , testCase "2nd favorite book of Hero and Warlock is Legends and Lore" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ pairTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.books)
                     (Ty_Arr $ WithIndex (Z 1) 
@@ -258,18 +269,18 @@ tests_complexLookup = testGroup "Complex Value Lookup" [
                     )
                 )
       @?=
-        HS.fromList [warlockP, heroP]
+        HS.fromList ["Warlock", "Hero"]
 
 
   , testCase "Hero and Dragon have Fire domain" $
-        testLookup rpgValIndex
+        testLookup valIndex
                 (Ty_Set $ WithElem $ pairTy
                     (Ty_Sym $ IsSymbol $ sym_rpg^.attr.charDomains)
                     (Ty_Set $ WithElem $
                       Ty_Sym $ IsSymbol $ sym_rpg^.domain.fire)
                 )
       @?=
-        HS.fromList [heroP, dragonP]
+        HS.fromList ["Hero", "Dragon"]
 
   ]
 

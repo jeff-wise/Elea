@@ -1,6 +1,6 @@
 
 
-module Test.Elea.Lang.Lens (tests_Lens) where
+module Test.Elea.Lang.Atom.Lens (tests_Lens) where
 
 
 
@@ -8,8 +8,8 @@ import Test.Prelude
 import Test.Data.Val
 import Test.Data.System
 
-import Elea.Lang.Lens
-import Elea.Lang.Types
+import Elea.Lang.Atom.Lens
+import Elea.Lang.Atom.Types
 
 
 import qualified Data.HashSet as Set

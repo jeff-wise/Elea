@@ -1,22 +1,49 @@
 
 
 
-module Test.Elea.Lang.Type where
+module Test.Elea.Lang.Atom.Type where
 
 
 import Test.Prelude
 import Test.Data.Val
-
-import Elea.Lang.Type
-import Elea.Lang.Types
+import Test.Data.System
 
 
-import qualified Data.HashSet as Set
+import Elea.Lang.Atom.Types
+import Elea.Lang.Atom.Type
+
+
+import qualified Data.HashSet as HS
 
 
 
 tests_Type ∷ TestTree
-tests_Type = testGroup "Type Tests" [tests_isType]
+tests_Type = testGroup "Type Tests" [
+    tests_isType
+  , tests_typeOf
+  ]
+
+
+
+tests_typeOf ∷ TestTree
+tests_typeOf = testGroup "TypeOf" [
+    
+      testCase "TypeOf Complex Value 1" $
+          ( typeOf $
+              Val_Set $ Set $ HS.fromList [  
+                Val_Num $ Z 10
+              , Val_Text $ Text "Rocket"
+              , Val_Sym $ sym_rpg^.entity.dragon
+              ]
+          )
+        @?=    
+          ( Ty_Set $ IsSet $ HS.fromList [
+              Ty_Num $ IsNumber $ Z 10
+            , Ty_Text $ IsText $ Text "Rocket"  
+            , Ty_Sym $ IsSymbol $ sym_rpg^.entity.dragon
+            ]
+          )
+  ]
 
 
 
@@ -40,15 +67,15 @@ tests_isSetTy = testGroup "Check Set Type" [
 tests_setLengthTy ∷ TestTree
 tests_setLengthTy = testGroup "Check Set Length" [
     testCase "Empty set has size type of 0" $ assert $
-      isType (Ty_Set $ SetWithSize $ Z 0) (Val_Set $ Set Set.empty)
+      isType (Ty_Set $ SetWithSize $ Z 0) (Val_Set $ Set HS.empty)
   , testCase "Singleton set has size type of 1" $ assert $
       isType  (Ty_Set $ SetWithSize $ Z 1) $
-              (Val_Set . Set . Set.singleton) (Val_Num $ Z 10)
+              (Val_Set . Set . HS.singleton) (Val_Num $ Z 10)
   , testCase "Empty set not same size type as sing set" $ assert $
-      not $ isType (Ty_Set $ SetWithSize $ Z 1) (Val_Set $ Set Set.empty)
+      not $ isType (Ty_Set $ SetWithSize $ Z 1) (Val_Set $ Set HS.empty)
   , testCase "Set with 2 elements has size type of 2" $ assert $
       isType  (Ty_Set $ SetWithSize $ Z 2) 
-              (Val_Set $ Set $ Set.fromList [Val_Num $ Z 1, Val_Num $ Z 2])
+              (Val_Set $ Set $ HS.fromList [Val_Num $ Z 1, Val_Num $ Z 2])
   , testCase "Cardinality of complex set is 5" $ assert $
       isType (Ty_Set $ SetWithSize $ Z 5) complexSet
 
