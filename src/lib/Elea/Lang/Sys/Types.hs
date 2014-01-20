@@ -233,21 +233,8 @@ type RelMap = HMS.HashMap RelDef Relation
 
 
 
-data Query = 
-  Query
-    -- | Match ParticleIDs 
-    Matcher
-    -- | Filter matched particles by value
-    Type
-
-
-
-data Matcher = 
-    MatchType Type
-  | MatchRel  Relation
-
-
-
+data Query = ByType Type | ByVal Val
+  
 type SystemId = Val
 
 

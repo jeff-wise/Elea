@@ -40,6 +40,7 @@ data Val =
   | Val_Text    Text
   | Val_Num     Number
   | Val_Sym     Symbol
+  | Val_Rel     Relation
   | Val_Dtm     DateTime
   | Val_Var     Variable
   | Val_Err     Error
