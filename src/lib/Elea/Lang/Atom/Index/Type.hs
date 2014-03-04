@@ -1,6 +1,6 @@
 
 
-module Elea.Lang.Index.Type (
+module Elea.Lang.Atom.Index.Type (
     TypeIndex
   , newTypeIndex
   , insert, lookup

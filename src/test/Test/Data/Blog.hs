@@ -1,16 +1,8 @@
 
-
-module Test.Data.Blog where
-
-
---- example blog database
--- comments
--- posts
--- authors
-
-
--- define blog particles
+-- Groups
+--  Can define relations with them
+--  Can define constraints within them
 --
--- add relations to system
---
--- add to system
+-- Uniqueness
+--   each particle has a group? or null group
+--   each system

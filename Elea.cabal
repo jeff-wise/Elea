@@ -34,10 +34,9 @@ Library
                         Elea.Lang.Atom.Types,
                         Elea.Lang.Atom.Lens
                         Elea.Lang.Atom.Val,
-                        Elea.Lang.Fun.Apply,
                         Elea.Lang.Index.Val,
                         Elea.Lang.Index.Type,
-                        Elea.Lang.Sys.Types
+                        Elea.Lang.Exp.Types
 
     other-modules:      Elea.Prelude
 
@@ -45,6 +44,8 @@ Library
                         containers,
                         unordered-containers,
                         text,
+                        transformers,
+                        either,
                         bytestring,
                         stream-fusion,
                         time,
@@ -67,10 +68,12 @@ Executable testsuite
     main-is:            Test/Main.hs
 
     other-modules:      Test.Prelude,
+                        Test.Data.Blog,
                         Test.Elea.Lang.Atom.Lens,
                         Test.Elea.Lang.Atom.Val,
                         Test.Elea.Lang.Atom.Type,
                         Test.Elea.Lang.Index.Type,
+                        Test.Elea.Lang.Index.Val
                         Test.Elea.Lang.Index.Val
 
     
@@ -84,6 +87,7 @@ Executable testsuite
                         tuple,
                         stream-fusion,
                         lens,
+                        stm,
                         mtl,
                         QuickCheck,
                         text

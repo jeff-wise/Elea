@@ -1,0 +1,367 @@
+
+
+module Test.Data.Blog (
+    -- * Blog contexts
+    initCtx                   
+    -- * Blog universe
+  , univ
+    -- * Post system values
+  , foodPost1, foodPost2
+  , vacationPost1
+  , familyPost1
+  ) where
+
+
+import Test.Prelude
+
+import Elea.Lang.Exp.Types
+import Elea.Lang.Atom.Types
+
+
+
+
+
+postTemplate ∷ Val
+postTemplate = Val_Set $ Set $ HS.fromList [
+    Val_Uni $ SysUnique
+  , pair  (Val_Sym $ SymDef "Type")
+          (Val_Sym $ SymDef "Post")
+  , pair  (Val_Sym $ SymDef "Title")
+          (Var $ Val_Sym $ SymDef "post_title")
+  , pair  (Val_Sym $ SymDef "Date")
+          (Var $ Val_Sym $ SymDef "post_date")
+  , pair  (Val_Sym $ SymDef "Authors")
+          (Var $ Val_Sym $ SymDef "post_authors")
+  , pair  (Val_Sym $ SymDef "Tags")
+          (Var $ Val_Sym $ SymDef "post_tags")
+  , pair  (Val_Sym $ SymDef "Body")
+          (Var $ Val_Sym $ SymDef "post_body")
+  ]
+
+
+
+
+commentTemplate ∷ Val
+commentTemplate = Val_Set $ Set $ HS.fromList [
+    Val_Uni $ SysUnique
+  , pair  (Val_Sym $ SymDef "Type")
+          (Val_Sym $ SymDef "Comment")
+  , pair  (Val_Sym $ SymDef "Title")
+          (Var $ Val_Sym $ SymDef "comm_title")
+  , pair  (Val_Sym $ SymDef "Date")
+          (Var $ Val_Sym $ SymDef "comm_date")
+  , pair  (Val_Sym $ SymDef "Author")
+          (Var $ Val_Sym $ SymDef "comm_author")
+  , pair  (Val_Sym $ SymDef "Body")
+          (Var $ Val_Sym $ SymDef "comm_body")
+  , pair  (Val_Sym $ SymDef "Post")
+          (Var $ Val_Sym $ SymDef "comm_post")
+  ]
+
+
+authorTemplate ∷ Val
+authorTemplate = Val_Set $ Set $ HS.fromList [
+    Val_Uni $ SysUnique
+  , pair  (Val_Sym $ SymDef "Type")
+          (Val_Sym $ SymDef "Author")
+  , pair  (Val_Sym $ SymDef "Name")
+          (Var $ Val_Sym $ SymDef "author_name")
+  , pair  (Val_Sym $ SymDef "Summary")
+          (Var $ Val_Sym $ SymDef "author_summary")
+  ]
+
+
+
+
+synthPost ∷ Synthesis
+synthPost = Synthesis {
+    _queries  = Query {    -- Get specs
+                  _qryFrom    = From_Trig
+                , _qrySelect  = [
+                      ( Val_Sym $ SymDef "author_name"
+                      ,  Lens_Set $ AnySuchThat
+                          (IsSymbol $ SymDef "author_name")
+                          (Lens_This)
+                      )
+                    , ( Val_Sym $ SymDef "author_name"
+                      ,  Lens_Set $ AnySuchThat
+                          (IsSymbol $ SymDef "author_name")
+                          (Lens_This)
+                    ]
+                }
+  , _funTree  = RootFun (ValT postTemplate) [
+                  Env (Val_Sym $ SymDef "post_authors") 
+                , Env (Val_Sym $ SymDef "post_title") 
+                , Fun (Val_Sym $ SymDef "post_date") 
+                      (Prim "Now")
+                      []
+                , Env (Val_Sym $ SymDef "post_tags") 
+                , Env (Val_Sym $ SymDef "post_body") 
+                ]
+  }
+
+
+-- TODO sure no initial events!??
+
+synthComment ∷ Synthesis
+synthComment = Synthesis {
+    _queries  = Query {    -- Get specs
+                  _qryFrom    = From_Trig
+                , _qrySelect  = [
+                      Lens_Set $ AnySuchThat
+                        (IsSymbol $ SymDef "comment_title")
+                        (Lens_This)
+                    , Lens_Set $ AnySuchThat
+                        (IsSymbol $ SymDef "comment_author")
+                        (Lens_This)
+                    , Lens_Set $ AnySuchThat
+                        (IsSymbol $ SymDef "comment_body")
+                        (Lens_This)
+                    , Lens_Set $ AnySuchThat
+                        (IsSymbol $ SymDef "comment_post")
+                        (Lens_This)
+                    ]
+                }
+  , _funTree  = RootFun (ValT commentTemplate) [
+                  Env (Val_Sym $ SymDef "comment_title")
+                  Env (Val_Sym $ SymDef "comment_author")
+                , Env (Val_Sym $ SymDef "comment_body") 
+                , Fun (Val_Sym $ SymDef "comment_date") 
+                      (Prim "Now")
+                      []
+                , Env (Val_Sym $ SymDef "post_tags") 
+                , Env (Val_Sym $ SymDef "post_body") 
+                ]
+  }
+
+
+
+
+synthAuthor ∷ Synthesis
+synthAuthor = Synthesis {
+    _queries  = Query {    -- Get specs
+                  _qryFrom    = From_Trig
+                , _qrySelect  = [
+                      Lens_Set $ AnySuchThat
+                        (IsSymbol $ SymDef "author_name")
+                        (Lens_This)
+                    , Lens_Set $ AnySuchThat
+                        (IsSymbol $ SymDef "author_summary")
+                        (Lens_This)
+                    ]
+                }
+  , _funTree  = RootFun (ValT authorTemplate) [
+                  Env (Val_Sym $ SymDef "author_name") 
+                , Env (Val_Sym $ SymDef "author_summary") 
+                ]
+  }
+
+
+createPost ∷ Reaction
+createPost = Reaction [
+    Group [
+      -- Create the post
+      Synthesize {
+        _syn  = synthPost
+      , _cat  = inert 
+      , _loc  = ThisSys
+      , _def  = []
+      }
+    ]
+  ]
+
+
+createAuthor ∷ Reaction
+createAuthor = Reaction [
+    Group [
+      Synthesize {
+        _syn  = synthAuthor
+      , _cat  = inert 
+      , _loc  = ThisSys
+      , _def  = []
+      }
+    ]
+  ]
+
+
+
+createComment ∷ Reaction
+createComment = Reaction [
+    Group [
+      Synthesize {
+        _syn  = synthComment
+      , _cat  = inert 
+      , _loc  = ThisSys
+      , _def  = []
+      }
+    ]
+  ]
+
+
+
+blog ∷ SystemDef
+blog = SystemDef
+    _defVal       =  Val_Sym $ SymDef "Blog"
+  , _defCat       = inert
+  , _defChildren  = [
+      SystemDef { 
+        _defVal       = Val_Sym $ SymDef "create_post"
+      , _defCat       = Catalyst {
+                          _catType  = Ty_Set $ WithElem $
+                                        IsSymbol $ SymDef "post_spec"
+                        , _catReact = createPost
+                        }
+      , _defChildren  = []
+      }
+    , SystemDef { 
+        _defVal       = Val_Sym $ SymDef "create_author"
+      , _defCat       = Catalyst {
+                          _catType  = Ty_Set $ WithElem $
+                                        IsSymbol $ SymDef "author_spec"
+                        , _catReact = createAuthor
+                        }
+      , _defChildren  = []
+      }
+      , SystemDef { 
+        _defVal       = Val_Sym $ SymDef "create_comment"
+      , _defCat       = Catalyst {
+                          _catType  = Ty_Set $ WithElem $
+                                        IsSymbol $ SymDef "comment_spec"
+                        , _catReact = [ createComment
+                                      , destroyCommentSpec
+                                      ]
+                        }
+      , _defChildren  = []
+      }
+      -- Send comment notification to post author
+      SystemDef { 
+        _defVal       = Val_Sym $ SymDef "comment_notify"
+      , _defCat       = Catalyst {
+                          _catType  = Ty_Set $ WithElem $
+                                        pairTy 
+                                          (IsSymbol $ SymDef "type")
+                                          (IsSymbol $ SymDef "comment")
+                        , _catReact = commentNotify
+                        }
+      , _defChildren  = []
+      }
+      -- All posts by author
+      -- Most popular tag
+    ]
+  }
+
+
+-- Testing process
+-- Send two authors from test to blog systems
+-- Send some post and comment specs
+-- check for comment notifications
+-- Have blog system send posts/repots to testSystem
+
+
+-- Use to test data sent and received from blog system
+testIOSystem ∷ SystemDef
+
+
+  
+blog ∷ IO ()
+blog = do
+  u ← bang blogSystem []
+  let blogMainSysVar = newSystemVar newProgram 
+  
+
+
+
+foodPost1 ∷ Universe → STM Val
+foodPost1 univ = mkSet [
+    mkPair  (univ^.symbol $ "Title")
+            (mkText "Lamb Vindaloo")
+  , mkPair  (univ^.symbol $ "Date")
+            (mkDtm 2014 1 25 8 40 30)
+  , mkPair  (univ^.symbol $ "Authors")
+            (mkSet [
+                mkText "Amita"
+              , mkText "Steven"
+              ]
+            )
+  , mkPair  (univ^.symbol $ "Tags")
+            (mkSet [
+                  univ^.symbol $ "Food"
+                , univ^.symbol $ "Curry"
+                , univ^.symbol $ "Lamb"
+                , univ^.symbol $ "Spicy"
+              ]
+            )
+  , mkPair  (univ^.symbol $ "Article")
+            (mkText "Lamb Vindaloo is delicious.")
+  ]
+
+
+
+foodPost2 ∷ Universe → STM Val
+foodPost2 univ = mkSet [
+    mkPair  (univ^.symbol $ "Title")
+            (mkText "Texas Chili")
+  , mkPair  (univ^.symbol $ "Date")
+            (mkDtm 2014 1 27 20 12 30)
+  , mkPair  (univ^.symbol $ "Authors")
+            (mkSet [
+                mkText "Steven"
+              , mkText "Alex"
+              ]
+            )
+  , mkPair  (univ^.symbol $ "Tags")
+            (mkSet [
+                  univ^.symbol $ "Food"
+                , univ^.symbol $ "Soup"
+                , univ^.symbol $ "Texas"
+                , univ^.symbol $ "Spicy"
+              ]
+            )
+  , mkPair  (univ^.symbol $ "Article")
+            (mkText "An authentic Texan Chili...")
+  ]
+
+
+
+vacationPost1 ∷ Universe → STM Val
+vacationPost1 univ = mkSet [
+    mkPair  (univ^.symbol $ "Title")
+            (mkText "Hawaii")
+  , mkPair  (univ^.symbol $ "Date")
+            (mkDtm 2014 1 23 9 10 20)
+  , mkPair  (univ^.symbol $ "Authors")
+            (mkSet [ mkText "Amita" ])
+  , mkPair  (univ^.symbol $ "Tags")
+            (mkSet [
+                  univ^.symbol $ "Vacation"
+                , univ^.symbol $ "Hawaii"
+                , univ^.symbol $ "Surfing"
+              ]
+            )
+  , mkPair  (univ^.symbol $ "Article")
+            (mkText "The beaches were fantastic!")
+  ]
+   
+
+
+familyPost1 ∷ Universe → STM Val
+familyPost1 univ = mkSet [
+    mkPair  (univ^.symbol $ "Title")
+            (mkText "Sarah's 8th Birthday")
+  , mkPair  (univ^.symbol $ "Date")
+            (mkDtm 2014 1 21 13 15 45)
+  , mkPair  (univ^.symbol $ "Authors")
+            (mkSet [ mkText "Steven" ])
+  , mkPair  (univ^.symbol $ "Tags")
+            (mkSet [
+                  univ^.symbol $ "Family"
+                , univ^.symbol $ "Birthday"
+              ]
+            )
+  , mkPair  (univ^.symbol $ "Article")
+            (mkText "He was very happy about his presents.")
+  ]
+
+
+
+

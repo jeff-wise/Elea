@@ -6,7 +6,6 @@ module Elea.Lang.Atom.Val (
   , asInt
   , numEven, numOdd
   , isInteger
-  , pair
   ) where
 
 

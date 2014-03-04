@@ -1,6 +1,6 @@
 
 
-module Elea.Lang.Index.Val (
+module Elea.Lang.Atom.Index.Val (
     ValIndex    
   , newValIndex
   , lookup, insert
@@ -227,10 +227,10 @@ insertSym sym key (Node_Sym symMap) = Node_Sym $
 -- Lookup
 ---------------------------------------------------------------------
 
-lookup ∷ Type → ValIndex → [Val]
+lookup ∷ Type → ValIndex → HS.HashSet Val
 lookup ty (ValIndex valNode valMap _) =
   let matchKeys = Set.toList $ lookupVal ty valNode
-  in  (flip fmap) matchKeys (\matchKey →
+  in  HS.fromList $ (flip fmap) matchKeys (\matchKey →
         case HMS.lookup matchKey valMap of
           Just val → val
           Nothing  → error "Should not happen"

@@ -110,6 +110,7 @@ module Elea.Prelude
     , Prelude.print
       -- ** Command line args
     , TimeOfDay, Day
+    , Pico
     , (Control.Lens.Getter.^.)
     , Control.Lens.Getter.view
     , (Control.Lens.Setter..~)
@@ -181,17 +182,16 @@ import Data.List.Stream as L
 import Data.Time.Calendar (Day(..))
 import Data.Time.LocalTime (TimeOfDay(..))
 
-
-
 -- For added instances/functions
 import qualified Data.Foldable as F
-import Data.Fixed (Fixed, E12, showFixed)
+import Data.Fixed (Pico, Fixed, E12, showFixed)
+
 
 
 
 
 judge ∷ (a → Bool) → (a → b) → (a → b) →
-         (a → b)
+         a → b
 judge detector reward punish statement =
   if detector statement
     then reward statement

@@ -16,6 +16,9 @@ module Elea.Lang.Atom.Types
   , AndTy (..), OrTy (..)
   , TextTy (..), NumberTy (..), SymbolTy (..)
   , DateTimeTy (..), VariableTy (..), TyVariable (..)
+    -- * Lens
+  , Lens (..)
+  , DictLens (..), ArrLens (..)
   ) where
  
 
@@ -223,7 +226,53 @@ instance Num Number where
 -- 1.4 Utility Functions
 ---------------------------------------------------------------------
 
+dict ∷ [(T.Text, Val)] → Val
 dict entries = Val_Dict . Dict . HMS.fromList
+
+
+at ∷ Array → Int → Maybe Val
+at (Arr arr) i 
+  | i >= 0 =  if i < Seq.length arr
+                then Just $ Seq.index arr i
+                else Nothing
+  | i < 0  =  if abs i <= Seq.length arr
+                then Just $ Seq.index arr (Seq.length arr + i)
+                else Nothing
+  | otherwise = Nothing
+
+
+-- | Casts a 'Double' as an 'Int', but only if
+-- no information is lost in the conversion
+-- TODO Removal Candidate
+doubleToInt ∷ Double → Maybe Int
+doubleToInt double = 
+  let i = round double
+  in  if double == fromIntegral i
+        then Just i
+        else Nothing
+
+
+asInt ∷ Number → Maybe Int
+asInt (Z i) = Just i
+asInt (R d) =
+  let i = round d
+  in  if d == (fromIntegral i)
+        then Just i
+        else Nothing
+
+
+numEven ∷ Number → Bool
+numEven (Z i) = even i
+numEven (R d) = maybe False even $ doubleToInt d
+   
+
+numOdd ∷ Number → Bool
+numOdd (Z i) = odd i
+numOdd (R d) = maybe False odd $ doubleToInt d
+
+
+isInteger ∷ Number → Bool
+isInteger = maybe False (const True) . asInt 
 
 
 
@@ -385,6 +434,26 @@ instance Show NumberTy where
 instance Show DateTimeTy where
   show (IsDateTime dtm) = "Is " ++ show dtm
   show AnyDateTime      = "DateTime"
+
+
+
+
+---------------------------------------------------------------------
+-- 3.0 Lens
+---------------------------------------------------------------------
+
+data Lens = 
+    Lens_Dict   DictLens
+  | Lens_Arr    ArrLens
+  | Lens_This
+
+
+data DictLens =
+    AtKey Text Lens
+  | Entries [Text]
+
+
+data ArrLens = AtIndex Int Lens
 
 
 

@@ -119,6 +119,7 @@ module Test.Prelude
     , module Test.Tasty
     , module Test.Tasty.HUnit
     , module Debug.Trace
+    , module Control.Concurrent.STM
     ) where
 
 import qualified Prelude
@@ -167,5 +168,7 @@ import Data.List.Stream as L
 import Test.Tasty
 import Test.Tasty.HUnit
 
+
+import Control.Concurrent.STM
 
 for = Prelude.flip L.map
