@@ -127,6 +127,7 @@ module Elea.Prelude
     , module Control.Concurrent.STM
     , module Control.Concurrent
     , judge
+    , for
     ) where
 
 import qualified Prelude
@@ -224,6 +225,8 @@ instance Hashable (Fixed E12) where
 instance Hashable Day where
   hashWithSalt = hashUsing toModifiedJulianDay
 
+
+for = flip L.map
 
 
 (>$>) ∷ a → (a → b) → b

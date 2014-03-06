@@ -17,20 +17,6 @@ import qualified Data.Text as T
 
 
 
--- | Convert a value x to a type s such that if
--- t is also a type of x, then s is a subset of t
-typeOf ∷ Val → Type
-typeOf (Val_Set  (Set  set)) = Ty_Set $ IsSet $ HS.map typeOf set
-typeOf (Val_Arr  (Arr  arr)) = Ty_Arr $ IsArray (typeOf <$> arr)
-typeOf (Val_Text text      ) = Ty_Text $ IsText text
-typeOf (Val_Num  num       ) = Ty_Num $ IsNumber num
-typeOf (Val_Sym  sym       ) = Ty_Sym $ IsSymbol sym
-typeOf (Val_Dtm  dtm       ) = Ty_Dtm $ IsDateTime dtm
---typeOf (Val_Var  var       ) = IsVariable
---typeOf (Val_Err  err       ) = IsError err
-
-
-
 
 isType ∷ Type → Val → Bool
 isType (Ty_Set  setTy ) (Val_Set  set ) = isSetType  setTy  set

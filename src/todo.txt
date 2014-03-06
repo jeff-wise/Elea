@@ -1,0 +1,23 @@
+
+
+Final list of TODOs
+
+IsSet Type ??
+Document clearly the indexing algorithms
+add a lot more comments to valindex.hs
+add a lot more comments to term types
+
+names of system terms, make consistent/obvious
+
+
+app wide settings
+  * istext case sensitive?
+
+indices search early returns/ cacheing
+so that user can reuse types in constraints
+
+
+
+notes:
+  abstract syntax should be safe/correct
+    but does not have to be succinct or super-elegant

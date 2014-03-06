@@ -44,6 +44,7 @@ data Value =
   | Val_Text    Text
   | Val_Num     Number
   | Val_Dtm     DateTime
+  | Val_URI     URI
   | Val_Err     Error
   | Val_Type    Type
   | Val_Null
@@ -81,6 +82,8 @@ data DateTime = DateTime
   } deriving (Eq, Generic)
 
 
+data URI = URI
+  deriving (Eq, Generic)
 
 
 data Error =
@@ -290,6 +293,7 @@ data Type =
   | Ty_Text   TextTy
   | Ty_Num    NumberTy
   | Ty_Dtm    DateTimeTy
+  | Ty_URI    URITy
   | Ty_None 
   | Ty_Any 
   deriving (Eq, Generic)
@@ -297,23 +301,21 @@ data Type =
 
 data SetTy = 
     WithElem      Type
-  | IsSet         (HS.HashSet Type)
-  | SetWithSize   Number
+  | SetOfSize   Number
   | AnySet
   deriving (Eq, Generic)
 
 
 data ArrayTy = 
-    IsArray    (Seq.Seq Type)
-  | WithIndex  Number Type 
+    WithIndex    Number Type 
+  | ArrOfSize  Number Type 
   | AnyArray
   deriving (Eq, Generic)
 
 
 data DictTy =
     HasEntry T.Text Type
-  | HasKey T.Text
-  | IsDict [(T.Text, Type)]
+  | DictOfSize Int
 
 
 data AndTy = AndTy [Type]
@@ -351,6 +353,7 @@ data DateTimeTy =
   deriving (Eq, Generic)
 
 
+data URITy = URITy
 
 
 ---------------------------------------------------------------------

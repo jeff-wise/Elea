@@ -1,15 +1,14 @@
 
 
-module Elea.Lang.Atom.Index.Val (
-    ValIndex    
-  , newValIndex
+module Elea.Lang.Index.Value (
+    ValueIndex    
+  , newValueIndex
   , lookup, insert
   ) where
 
 
 import Elea.Prelude
-import Elea.Lang.Atom.Types
-import Elea.Lang.Atom.Val
+import Elea.Lang.Term.Basic
 
 
 import qualified Data.Foldable as F
@@ -42,9 +41,9 @@ type KeySet = Set.Set MatchKey
 -- 1.2 Value Index
 ---------------------------------------------------------------------
 --
-data ValIndex = ValIndex
-  { _valNode        ∷ Node_Val
-  , _valMap         ∷ HMS.HashMap MatchKey Val
+data ValueIndex = ValueIndex
+  { _valNode        ∷ Node_Value
+  , _valMap         ∷ HMS.HashMap MatchKey Value
   , _valKeyCounter  ∷ Int
   }
 
@@ -55,7 +54,7 @@ data ValIndex = ValIndex
 -- 1.3 Index Nodes
 ---------------------------------------------------------------------
 --
-data Node_Val = Node_Val
+data Node_Value = Node_Value
   { _node_Dict  ∷  Node_Dict
   , _node_Arr   ∷  Node_Arr
   , _node_Set   ∷  Node_Set
@@ -65,7 +64,7 @@ data Node_Val = Node_Val
 
 
 data Node_Dict = Node_Dict
-  { _dictNodeHM   ∷ HMS.HashMap T.Text Node_Val
+  { _dictNodeHM   ∷ HMS.HashMap T.Text Node_Value
   , _dictSizeMap  ∷ HMS.HashMap MatchKey Int
   } 
 
@@ -73,13 +72,13 @@ data Node_Dict = Node_Dict
 data Node_Set = Node_Set
   { _setKeyMap  ∷  HMS.HashMap MatchKey MatchKey
   , _setSizeMap ∷  HMS.HashMap MatchKey Int
-  , _setValNode ∷  Node_Val
+  , _setValNode ∷  Node_Value
   , _setCounter ∷  Int
   }
 
 
 data Node_Arr = Node_Arr
-  { _arrNodeSeq ∷ Seq.Seq Node_Val }
+  { _arrNodeSeq ∷ Seq.Seq Node_Value }
 
 
 data Node_Num = Node_Num
@@ -96,14 +95,14 @@ data Node_Text = Node_Text
 -- 1.4 Showable Index
 ---------------------------------------------------------------------
 
-instance Show ValIndex where
-  show (ValIndex valNode valItemMap valKeyCounter) =
+instance Show ValueIndex where
+  show (ValueIndex valNode valItemMap valKeyCounter) =
     "ValNode:\n " ++ show valNode ++ "\n" ++
     "ItemMap:\n " ++ show valItemMap ++ "\n" ++
     "Counter:\n " ++ show valKeyCounter ++ "\n"
  
 
-instance Show Node_Val where 
+instance Show Node_Value where 
   show nodeVal =
     "Set:\n " ++ (show $ _node_Set nodeVal) ++ "\n" ++
     "Arr:\n " ++ (show $ _node_Arr nodeVal) ++ "\n" ++ 
@@ -139,7 +138,7 @@ instance Show Node_Text where
 -- 1.5 Lenses
 ---------------------------------------------------------------------
 
-makeLenses ''Node_Val
+makeLenses ''Node_Value
 
 
 
@@ -148,20 +147,20 @@ makeLenses ''Node_Val
 -- 1.6 Constructors
 ---------------------------------------------------------------------
 
-newValIndex ∷ ValIndex
-newValIndex = ValIndex
-  { _valNode        =  newValNode
+newValueIndex ∷ ValueIndex
+newValueIndex = ValueIndex
+  { _valNode        =  newValueNode
   , _valMap         =  HMS.empty
   , _valKeyCounter  =  0
   }
 
 
 -- | Lazily construct a value node
-newValNode ∷ Node_Val
-newValNode = Node_Val
+newValueNode ∷ Node_Value
+newValueNode = Node_Value
   { _node_Dict  = Node_Dict HMS.empty
   , _node_Arr   = Node_Arr Seq.empty
-  , _node_Set   = Node_Set HMS.empty HMS.empty newValNode 0
+  , _node_Set   = Node_Set HMS.empty HMS.empty newValueNode 0
   , _node_Text  = Node_Text HMS.empty
   , _node_Num   = Node_Num Map.empty
   }
@@ -174,29 +173,29 @@ newValNode = Node_Val
 ---------------------------------------------------------------------
 
 -- Values are verified by the system to be unique before inserted.
-insert ∷ Val → ValIndex → ValIndex
+insert ∷ Value → ValueIndex → ValueIndex
 insert val (ValIndex valNode valItemMap valKeyCounter) =
-  ValIndex {
-    _valNode       = insertVal val valKeyCounter valNode
+  ValueIndex {
+    _valNode       = insertValue val valKeyCounter valNode
   , _valMap        = HMS.insert valKeyCounter val valItemMap
   , _valKeyCounter = valKeyCounter + 1
   }
 
 
 
-insertVal ∷ Val → MatchKey → Node_Val → Node_Val
+insertValue ∷ Value → MatchKey → Node_Value → Node_Value
 
-insertVal (Val_Dict dict) key node  = node & node_Dict %~ insertDict dict  key
+insertValue (Val_Dict dict) key node  = node & node_Dict %~ insertDict dict  key
 
-insertVal (Val_Arr  arr ) key node  = node & node_Arr  %~ insertArr  arr  key
+insertValue (Val_Arr  arr ) key node  = node & node_Arr  %~ insertArr  arr  key
 
-insertVal (Val_Set  set ) key node  = node & node_Set  %~ insertSet  set key
+insertValue (Val_Set  set ) key node  = node & node_Set  %~ insertSet  set key
 
-insertVal (Val_Text text) key node  = node & node_Text %~ insertText text key
+insertValue (Val_Text text) key node  = node & node_Text %~ insertText text key
 
-insertVal (Val_Num  num ) key node  = node & node_Num  %~ insertNum  num  key
+insertValue (Val_Num  num ) key node  = node & node_Num  %~ insertNum  num  key
 
-insertVal _               _   node  = node
+insertValue _               _   node  = node
 
 
 
@@ -206,9 +205,9 @@ insertDict (Dict insHM) matchKey (Node_Dict dictNodeHM) =
   let updateDict nodeHM insKey insVal =
         case HMS.lookup insKey nodeHM of
           Just valNode  →
-            HMS.insert insKey (insertVal insVal matchKey valNode)
+            HMS.insert insKey (insertValue insVal matchKey valNode)
           Nothing       →
-            HMS.insert insKey (insertVal insVal matchKey newValNode)
+            HMS.insert insKey (insertValue insVal matchKey newValNode)
   in  Node_Dict 
       { _dictNodeHM  = HMS.foldlWithKey' updateDict dictNodeHM insHM
       , _dictSizeMap = HMS.insert matchKey (HMS.size insHM)
@@ -222,9 +221,9 @@ insertArr (Arr arr) key (Node_Arr nodeSeq) =
     go EmptyL           EmptyL                   = Seq.empty
     go EmptyL           (valNode :< remValNodes) = valNode <| remValNodes
     go (val :< remVals) EmptyL                   = 
-      fmap (\x → insertVal x key newValNode) (val <| remVals)
+      fmap (\x → insertValue x key newValNode) (val <| remVals)
     go (val :< remVals) (valNode :< remValNodes) =
-      insertVal val key valNode <| go (viewl remVals) (viewl remValNodes)
+      insertValue val key valNode <| go (viewl remVals) (viewl remValNodes)
 
 
 
@@ -239,7 +238,7 @@ insertSet (Set set) key (Node_Set keyMap sizeMap valNode counter) =
   where
     setSize   = HS.size set
     setKeys   = [counter..(counter + setSize -1)]
-    addSetElemToNode node (elem, elemKey) = insertVal elem elemKey node
+    addSetElemToNode node (elem, elemKey) = insertValue elem elemKey node
     addElemKeyToMap currKeyMap elemKey = HMS.insert elemKey key currKeyMap
 
 
@@ -261,9 +260,9 @@ insertNum num key (Node_Num numMap) = Node_Num $
 -- 3.0 Lookup
 ---------------------------------------------------------------------
 
-lookup ∷ Type → ValIndex → HS.HashSet Val
+lookup ∷ Type → ValueIndex → HS.HashSet Value
 lookup ty (ValIndex valNode valMap _) =
-  let matchKeys = Set.toList $ lookupVal ty valNode
+  let matchKeys = Set.toList $ lookupValue ty valNode
   in  HS.fromList $ (flip fmap) matchKeys (\matchKey →
         case HMS.lookup matchKey valMap of
           Just val → val
@@ -272,23 +271,23 @@ lookup ty (ValIndex valNode valMap _) =
 
 
 
-lookupVal ∷ Type → Node_Val → KeySet
+lookupValue ∷ Type → Node_Value → KeySet
 
-lookupVal (Ty_Dict dictTy) node  = lookupDict dictTy $ _node_Dict node
+lookupValue (Ty_Dict dictTy) node  = lookupDict dictTy $ _node_Dict node
 
-lookupVal (Ty_Arr  arrTy ) node  = lookupArr  arrTy  $ _node_Arr  node
+lookupValue (Ty_Arr  arrTy ) node  = lookupArr  arrTy  $ _node_Arr  node
 
-lookupVal (Ty_Set  setTy ) node  = lookupSet  setTy  $ _node_Set  node
+lookupValue (Ty_Set  setTy ) node  = lookupSet  setTy  $ _node_Set  node
 
-lookupVal (Ty_And  andTy ) node  = lookupAnd  andTy node
+lookupValue (Ty_And  andTy ) node  = lookupAnd  andTy node
 
-lookupVal (Ty_Or   orTy  ) node  = lookupOr   orTy  node
+lookupValue (Ty_Or   orTy  ) node  = lookupOr   orTy  node
 
-lookupVal (Ty_Text textTy) node  = lookupText textTy $ _node_Text node 
+lookupValue (Ty_Text textTy) node  = lookupText textTy $ _node_Text node 
 
-lookupVal (Ty_Num  numTy ) node  = lookupNum  numTy  $ _node_Num  node
+lookupValue (Ty_Num  numTy ) node  = lookupNum  numTy  $ _node_Num  node
 
-lookupVal (Ty_Any        ) node  = (lookupSet  AnySet    $ _node_Set  node)
+lookupValue (Ty_Any        ) node  = (lookupSet  AnySet    $ _node_Set  node)
                        `Set.union` (lookupArr  AnyArray  $ _node_Arr  node)
                        `Set.union` (lookupText AnyText   $ _node_Text node)
                        `Set.union` (lookupNum  AnyNumber $ _node_Num  node)
@@ -301,17 +300,17 @@ lookupDict ∷ DictTy → Node_Dict → KeySet
 
 lookupDict (HasEntry key ty  ) (Node_Dict nodeHM) = 
   case HMS.lookup key nodeHM of
-    Just valNode  →  lookupVal ty valNode
+    Just valNode  →  lookupValue ty valNode
     Nothing       →  Set.empty
 
 lookupDict (IsDict entryTypes) (Node_Dict nodeHM sizeMap) =
   let collKeys Nothing        _         = Nothing
       collKeys (Just keyMap) (key, ty) = do
         valNode ← HMS.lookup key nodeHM
-        let matchKeys = lookupVal ty valNode
+        let matchKeys = lookupValue ty valNode
             insMatchKey hm key = HMS.insertWith (+) key 1 hm
         return $ Just $ L.foldr insMatchKey keyMap
-                        . lookupVal ty valNode
+                        . lookupValue ty valNode
       filterTotalMatches matchKeys (key, found) =
         case HMS.lookup key sizeMap of
           Just size →  if size == found
@@ -329,22 +328,22 @@ lookupArr ∷ ArrayTy → Node_Arr → KeySet
 
 lookupArr (WithIndex idx ty) (Node_Arr nodeArr) =
   if (idx >= 0) && (idx < Seq.length nodeArr)
-    then lookupVal ty $ Seq.index nodeArr idx
+    then lookupValue ty $ Seq.index nodeArr idx
     else Set.empty
 
 lookupArr (IsArray  tySeq ) (Node_Arr nodeArr) =
   let go _                EmptyL                    = Set.empty
       go EmptyL           _                         = Set.empty
       go (ty :< remTys)   (valNode :< remValNodes)
-        | Seq.null remTys = lookupVal ty valNode
+        | Seq.null remTys = lookupValue ty valNode
         | otherwise       = Set.intersection
-                              (lookupVal ty valNode)
+                              (lookupValue ty valNode)
                               (go (viewl remTys) (viewl remValNodes))
   in  go (viewl tySeq) (viewl nodeArr)
 
 lookupArr AnyArray           (Node_Arr nodeArr) =
     F.foldl' Set.union Set.empty $
-      fmap (lookupVal Ty_Any) nodeArr
+      fmap (lookupValue Ty_Any) nodeArr
 
 
 
@@ -352,7 +351,7 @@ lookupArr AnyArray           (Node_Arr nodeArr) =
 lookupSet ∷ SetTy → Node_Set → KeySet
 
 lookupSet (WithElem    elemTy) (Node_Set setMap _ valNode _      ) =
-  let elemKeys = lookupVal elemTy valNode
+  let elemKeys = lookupValue elemTy valNode
       collectSetKeys setKeys elemKey = 
         setKeys `Set.union` 
         (maybe Set.empty Set.singleton $ HMS.lookup elemKey setMap)
@@ -360,7 +359,7 @@ lookupSet (WithElem    elemTy) (Node_Set setMap _ valNode _      ) =
 {-
 lookupSet (IsSet setTys      ) (Node_Set setMap sizeMap valNode _) =
   let unionElemMatches matchKeys nextElemTy = 
-        matchKeys `Set.union` lookupVal nextElemTy valNode
+        matchKeys `Set.union` lookupValue nextElemTy valNode
       countSetMatches matchMap elemKey =
         case HMS.lookup elemKey setMap of
           Just setKey → Map.insertWith (+) setKey 1 matchMap
@@ -391,14 +390,14 @@ lookupSet AnySet                  (Node_Set _ sizeMap _ _) =
 
 lookupAnd ∷ AndTy → Node_Val → KeySet
 lookupAnd (AndTy ty1 ty2) valNode =
-  lookupVal ty1 valNode `Set.intersection` lookupVal ty2 valNode
+  lookupValue ty1 valNode `Set.intersection` lookupValue ty2 valNode
 
 
 
 
 lookupOr ∷ OrTy → Node_Val → KeySet
 lookupOr (OrTy ty1 ty2) valNode =
-  lookupVal ty1 valNode `Set.union` lookupVal ty2 valNode
+  lookupValue ty1 valNode `Set.union` lookupValue ty2 valNode
 
 
 
