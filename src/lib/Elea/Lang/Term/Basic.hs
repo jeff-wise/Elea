@@ -51,8 +51,9 @@ data Value =
   deriving (Eq, Generic)
 
 
-data Dict =
-  Dict (HMS.HashMap Text Value)
+data Dict = Dict
+  { _getDict ∷ (HMS.HashMap Text Value) }
+  deriving (Eq, Generic)
 
 
 data Array = Arr
@@ -232,6 +233,16 @@ instance Num Number where
 dict ∷ [(T.Text, Val)] → Val
 dict entries = Val_Dict . Dict . HMS.fromList
 
+text ∷ T.Text → Val
+text = Val_Text . Text
+
+int ∷ Int → Val
+int = Val_Number . Z
+
+real ∷ Double → Val
+real = Val_Number . R
+
+
 
 at ∷ Array → Int → Maybe Val
 at (Arr arr) i 
@@ -299,23 +310,26 @@ data Type =
   deriving (Eq, Generic)
 
 
+data DictTy =
+    HasEntry T.Text Type
+  | DictOfSize Int
+  | AnyDict
+  deriving (Eq, Generic)
+
+
+data ArrayTy = 
+    WithIndex     Number Type 
+  | ArrOfSize     Number Type 
+  | EachArrValue  Type
+  | AnyArray
+  deriving (Eq, Generic)
+
+
 data SetTy = 
     WithElem      Type
   | SetOfSize   Number
   | AnySet
   deriving (Eq, Generic)
-
-
-data ArrayTy = 
-    WithIndex    Number Type 
-  | ArrOfSize  Number Type 
-  | AnyArray
-  deriving (Eq, Generic)
-
-
-data DictTy =
-    HasEntry T.Text Type
-  | DictOfSize Int
 
 
 data AndTy = AndTy [Type]
@@ -437,6 +451,23 @@ instance Show NumberTy where
 instance Show DateTimeTy where
   show (IsDateTime dtm) = "Is " ++ show dtm
   show AnyDateTime      = "DateTime"
+
+
+
+
+---------------------------------------------------------------------
+-- 2.3 Utility Functions
+---------------------------------------------------------------------
+
+isDict ∷ Type
+isDict entries = 
+  let entryTys = L.map (\(key, ty) → HasEntry key ty) entries
+      sizeTy = DictOfSize (L.length entries)
+  in  AndTy (sizeTy : entryTys)
+
+
+isText ∷ Type
+isText = Ty_Text . IsText
 
 
 

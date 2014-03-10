@@ -126,8 +126,7 @@ module Elea.Prelude
     , (>$>)
     , module Control.Concurrent.STM
     , module Control.Concurrent
-    , judge
-    , for
+    , module Data.Traversable
     ) where
 
 import qualified Prelude
@@ -141,6 +140,10 @@ import qualified Control.Arrow
 import Control.Applicative
 import Control.Category
 import qualified Control.Monad
+
+
+import Data.Foldable as F
+import Data.Traversable
 
 
 import Data.Word (Word8, Word32, Word64, Word)
@@ -184,19 +187,7 @@ import Data.Time.Calendar (Day(..))
 import Data.Time.LocalTime (TimeOfDay(..))
 
 -- For added instances/functions
-import qualified Data.Foldable as F
 import Data.Fixed (Pico, Fixed, E12, showFixed)
-
-
-
-
-
-judge ∷ (a → Bool) → (a → b) → (a → b) →
-         a → b
-judge detector reward punish statement =
-  if detector statement
-    then reward statement
-    else punish statement
 
 
 
@@ -226,7 +217,6 @@ instance Hashable Day where
   hashWithSalt = hashUsing toModifiedJulianDay
 
 
-for = flip L.map
 
 
 (>$>) ∷ a → (a → b) → b

@@ -1,10 +1,29 @@
 
 
-module Elea.Lang.Term.System where
+module Elea.Lang.Term.System
+  ( -- * System
+    --   $systemDesc
+    System (..)
+  , Membrane (..), Interior (..)
+  , Interaction (..)
+  , Constraints (..), UniqConstraint (..), CellConstraint (..)
+    -- ** System Constructors
+  , Cons_System (..)
+  , Cons_Membrane (..)
+    -- *** Membrane Constructors
+  , Cons_Value (..), Cons_Interaction (..), Cons_Constraints (..)
+    -- ** System Utilities
+  , emptyInterior, particle, free
+    -- * Force
+    -- * Cause/Effects
+  ) where
 
 
 import Elea.Lang.Term.Basic
 import Elea.Lang.Index.Value
+
+
+import qualified Data.PQueue.Min as PQ
 
 
 
@@ -12,40 +31,42 @@ import Elea.Lang.Index.Value
 -- 1. System
 ---------------------------------------------------------------------
 
-data System = System
-  { _sysMembrane  ∷ Membrane
-  , _sysInterior  ∷ Interior
-  , _sysParent    ∷ System
-  }
 
 
-data Membrane = Membrane
-  { _memValue ∷ Value
-  , _memInter ∷ Interaction
-  , _memCnstr ∷ Constraints
-  }
+-- | System
+data System = System Membrane Interior
 
 
-data Interior = Interior
-  { _intCellMap ∷ TVar (HMS.HashMap Value (TVar System))
-  , _intCellIdx ∷ TVar ValueIndex
-  }
+-- | System Membrane
+-- Parameters
+--  * Value - 
+data Membrane =
+  Membrane Value (Maybe Interaction) [Constraint]
 
 
 
-data Interaction = Interaction
-  { interCause  ∷ Cause
-  , interEffect ∷ Effect
-  }
+data Interior =
+  Interior
+    (TVar (HMS.HashMap Value (TVar System)))
+    (TVar ValueIndex)
 
 
 
-data Constraints = Constraints
-  { cnstrUnique ∷  [UniqConstraint]
-  , cnstrCells  ∷  Type  
-  }
+data Interaction = Interaction Cause EffectQueue
 
-data UniqConstraint = UniqConstraint [Lens]
+
+data Constraint = 
+    Cnstr_Unique [Lens]
+  | Cnstr_CellTy Type
+
+
+
+data Location =
+    Absolute [Type]
+  | Relative [Type]
+  | Parent
+  | Here
+
 
 
 
@@ -53,14 +74,40 @@ data UniqConstraint = UniqConstraint [Lens]
 -- 1.2 System Constructors
 ---------------------------------------------------------------------
 
-data Cons_System = Cons_System
-  { _sysConsLoc ∷ URITy
-  , _sysConsMem ∷ Cons_Membrane
-  , _sysConsIni ∷ [Effect]
-  }
+
+-- | Membrane Constructor
+--  * Membrane Constructor (Cons_Membrane) - How to build the
+--      system's membrane, which gives the system most
+--      of its important properties.
+data Cons_Membrane =
+  Cons_Membrane
+    Cons_Value
+    (Maybe Cons_Interaction)
+    Cons_Constraints
 
 
-data Cons_Membrane = Cons_Membrane
+
+-- | Value Constructor
+-- The value of the membrane is a function of the
+-- current state of the system, which has no side effects.
+newtype Cons_Value = Cons_Value Synthesis
+
+
+
+-- | Interaction Constructor
+data Cons_Interaction =
+  Cons_Interaction Cons_Cause EffectQueue
+
+
+
+-- | Constraints Constructor
+data Cons_Constraints = Cons_Constraints [Cons_Constraint]
+
+data Cons_Constraint = 
+    Cnstr_Unique [Lens]
+  | Cnstr_CellTy Type
+
+
 
 
 
@@ -77,33 +124,43 @@ emptyInterior = Interior
 
 
 
+-- | A particle is a system with no subsystems (cells)
+particle ∷ Cons_Constraints
+particle = Cons_Constraints [] (Syn.tyConst Ty_None)
+
+
+-- | A Constraints constructor which defines a free system.
+-- A free system has no contraints.
+free ∷ Cons_Constraints
+free = Cons_Constraints [] (Syn.tyConst Ty_Any)
+
+
 
 ---------------------------------------------------------------------
 -- 2.0 Force
 ---------------------------------------------------------------------
 
 data Force =
-    Force_Create  SystemSource  
-  | Force_Update  SystemSource
-  | Force_Destroy Type                -- | URI Type
+    Force_Create  Location Cons_Membrane
+  | Force_Update  Location Type Cons_Membrane
+  | Force_Destroy Location
   | Force_IO      IOAction
 
 
-data SystemSource =
-    Src_Cons  Cons_System
-  | Src_Lib   URI
-
 
 data IOAction =
-    IOPerform (IO ())
-  | IORead  (IO String)
+    IOPerform (Value → IO ())
+  | IORead  (Value → IO Text) EffectQueue
+
+
 
 
 ---------------------------------------------------------------------
--- 2.1 Cause & Effects of Forces
+-- 3.0 Cause & Effects
 ---------------------------------------------------------------------
 
 type Trigger = Value
+
 
 -- | Cause
 -- A system event.
@@ -112,19 +169,46 @@ data Cause =
     -- of cells of a specified 'Type'
     -- The 'Trigger' is a set of values of the cells
     -- of the specified type
-    Threshold Int Type
+    OnThreshold Int Type
     -- | A new cell was added to the system.
     -- The 'Trigger' is the new cell's value
-  | NewCell Type
---  | Relational Int Type
-  | Rejection
+  | OnNewCell Type
+  | OnRejection
 
 
 
-data Effect = Effect
-  { _effectPrec   ∷ Int 
-  , _effectForces ∷ [Force]
-  }
+data Effect = Effect Int Force
+ 
+type EffectQueue = PQ.MinQueue Effect
 
+
+---------------------------------------------------------------------
+-- 3.1 Cause/Effects Constructors
+---------------------------------------------------------------------
+
+data Cons_Cause = 
+    Cons_OnThreshold Synthesis Synthesis
+  | Cons_OnNewCell Synthesis
+  | Cons_OnRejection
+
+
+
+---------------------------------------------------------------------
+-- 3.3 Ordered Effects
+---------------------------------------------------------------------
+
+instance Ord Effect where
+  compare (Effect i _) (Effect j _) = i `compare` j
+
+
+
+
+
+---------------------------------------------------------------------
+-- 3.2 Cause/Effects Utilities
+---------------------------------------------------------------------
+
+effectQueue ∷ [Effect] → EffectQueue
+effectQueue = L.foldl' (flip PQ.insert) PQ.empty
 
 

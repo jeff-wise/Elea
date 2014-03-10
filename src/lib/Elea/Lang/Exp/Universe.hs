@@ -133,30 +133,7 @@ compSymbol symText = state compSymbol'
 ---------------------------------------------------------------------
 -- Find Systems
 ---------------------------------------------------------------------
-
-findSystem ∷ Context → SysLocation → STM (Maybe (TVar System))
-findSystem ctx systemLocation =
-  case systemLocation of
-    (Absolute tyList) → search tyList (ctx^.universe.mainSys)
-    (Relative tyList) → search tyList (ctx^.currSysVar)
-    (Parent         ) → (view sysParent) <$>
-                            (readTVar $ ctx^.currSysVar)
-    (This           ) → return $ Just (ctx^.currSysVar)
-
-
-
-search ∷ [Type] → TVar System → STM (Maybe (TVar System))
-search []          sysVar = return $ Just sysVar
-search (ty:remTys) sysVar = do
-  system     ← readTVar sysVar
-  childIndex ← readTVar (system^.sysChildIndex)
-  childMap   ← readTVar (system^.sysChildMap)
-  case HS.toList $ VI.lookup ty childIndex of
-    []           → return Nothing
-    (valOfSys:_) → search remTys $
-                      fromJust $ HMS.lookup valOfSys childMap
-                        
-      
+   
 
 report ∷ Val → STM ()
 report _ = return ()

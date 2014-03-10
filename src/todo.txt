@@ -16,8 +16,27 @@ app wide settings
 indices search early returns/ cacheing
 so that user can reuse types in constraints
 
+plan out sample apps based on biggest problem areas
+ e.g. relations, and concurrency
 
+
+review custom combinator usage
 
 notes:
   abstract syntax should be safe/correct
     but does not have to be succinct or super-elegant
+
+
+
+-- Library is a language construct..
+-- the only one which manipulates systems?
+-- A way to store systems and automatically hosts them?
+-- Repository, dep. management, etc..
+
+
+synthesis: use random numbers as index? adjaceny list representation
+ need to define as tuples or just as a list?
+
+
+templates: explanation, design decisions, etc..
+          use int as params, gui can abstract over with tags if needed

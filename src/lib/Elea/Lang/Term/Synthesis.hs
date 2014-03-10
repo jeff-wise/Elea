@@ -4,21 +4,96 @@ module Elea.Lang.Term.Synthesis where
 
 
 
--- Abstractions
 
--- | Type Templates
+---------------------------------------------------------------------
+-- 1.0 Synthesis
+---------------------------------------------------------------------
+
+type Param = Int
+
+-- Adjacency List representation, since functional
+-- representations look difficult...
+-- Vertices are just arbitrary integer identifiers
+type SynthesisGraph = HMS.HashMap Int Application
+
+-- | Synthesis is an 'Application' graph
+data Synthesis = Synthesis SynthesisGraph
 
 
+
+-- | Application
+-- Explanation.
+--
+-- Lambda calculus terms to emphasize
+-- combinatorial nature of synthesis 
+data Application = Application Abstraction [Param]
+
+
+
+-- | Abstraction
+-- Explanation.
+data Abstraction =
+    Abs_Equation  Equation
+  | Abs_TextProc  TextProcessor
+  | Abs_Random    Random
+  | Abs_Value     Value
+  | Abs_Type      Type
+  | Abs_Lens      Lens
+  | Abs_SynValue  Synthesis
+  | Abs_SynType   Synthesis
+  | Abs_ValTemp   T_Value
+  | Abs_TypeTemp  T_Type
+  | Abs_Query     Query
+  | Abs_Rel       RelQuery
+  | Abs_Trigger
+
+
+
+
+---------------------------------------------------------------------
+-- 1.3 Utility Function
+---------------------------------------------------------------------
+
+synthesis ∷ [(Int, Application)] → Synthesis
+synthesis apps = Synthesis . HMS.fromList
+
+
+
+valConst value = Synthesis $
+  HMS.fromList [ (1, Application (Abs_Value value) []) ]
+
+
+tyConst ty = Synthesis $
+  HMS.fromList [ (1, Application (Abs_Type ty) []) ]
+
+
+lensConst lens = Synthesis $
+  HMS.fromList [ Application (Abs_Lens lens) [] ]
+
+
+
+
+---------------------------------------------------------------------
+-- 3.0 Value Template
+---------------------------------------------------------------------
+
+
+-- | Template
+-- A Template type is either a reference to a value of
+-- some type or a declaration of that value
+-- Abstracted normal values over with this type function.
+-- and built new datatype around it. Mapping to values
+-- is resovling this type function.
 data Template a = 
     Dec a
-  | Var Int
+  | Ref Param
 
 
 
 data T_Value = 
-    T_Val_Set     T_Set
-  | T_Val_Dict    T_Dict
+    T_Val_Dict    T_Dict
   | T_Val_Arr     T_Array
+  | T_Val_Set     T_Set
   | T_Val_Text    T_Text
   | T_Val_Num     T_Number
   | T_Val_Dtm     T_DateTime
@@ -27,7 +102,8 @@ data T_Value =
 
 
 
-data T_Set = T_Set (HS.HashSet (Template T_Value))
+data T_Dict = T_Dict
+  (HMS.HashMap (Template T_Text) (Template T_Value))
   deriving (Generic)
 
 
@@ -35,8 +111,7 @@ data T_Array = T_Arr (Seq.Seq (Template T_Value))
   deriving (Generic)
 
 
-data T_Dict = T_Dict
-  (HMS.HashMap (Template T_Text) (Template T_Value))
+data T_Set = T_Set (HS.HashSet (Template T_Value))
   deriving (Generic)
 
 
@@ -54,6 +129,10 @@ data T_DateTime = T_DateTime Day TimeOfDay
   deriving (Generic)
 
 
+---------------------------------------------------------------------
+-- 3.1 Hashable Value Template
+---------------------------------------------------------------------
+
 instance Hashable T_Set
 instance Hashable T_Array
 instance Hashable T_Dict
@@ -62,6 +141,11 @@ instance Hashable T_Number
 instance Hashable T_DateTime
 
 
+
+
+---------------------------------------------------------------------
+-- 4.0 Type Template
+---------------------------------------------------------------------
 
 data T_Type = 
     T_Ty_Dict   T_DictTy
@@ -77,7 +161,7 @@ data T_Type =
 
 data T_DictTy =
     T_HasEntry (Template T_Text) (Template T_Type)
-  | T_IsDict [(Template T_Text, Template T_Type)]
+  | T_DictOfSize (Template T_Num)
 
 
 data T_SetTy = 
@@ -123,62 +207,26 @@ data T_DateTimeTy =
 
 
 
--- Adjacency List representation, since functional
--- representations look difficult...
--- Vertices are just arbitrary integer identifiers
-type SynthesisGraph = HMS.HashMap Int Application
 
--- | Synthesis is an 'Application' graph
-data Synthesis = Synthesis SynthesisGraph
-
-
-synthesis ∷ [(Int, Application)] → Synthesis
-synthesis apps = Synthesis . HMS.fromList
-
-
-synValueConst value = Synthesis $
-  HMS.fromList [ Application (Abs_Value value) [] ]
-
-
-synTypeConst typ = Synthesis $
-  HMS.fromList [ Application (Abs_Type typ) [] ]
-
-
-synLensConst lens = Synthesis $
-  HMS.fromList [ Application (Abs_Lens lens) [] ]
-
-
-
-
--- Lambda calculus terms to emphasize
--- combinatorial nature of synthesis 
-
-data Application = Application
-  { _appAbs     ∷  Abstraction
-  , _appParams  ∷ [Int]
-  }
-
-
-data Abstraction =
-    Abs_Equation  Equation
-  | Abs_TextProc  TextProcessor
-  | Abs_Value     Value
-  | Abs_Type      Type
-  | Abs_Lens      Lens
-  | Abs_SynValue  Synthesis
-  | Abs_SynType   Synthesis
-  | Abs_ValTemp   T_Val
-  | Abs_TypeTemp  T_Type
- -- | Abs_LensTemp  TypeTemplate
-  | Abs_Query     Query
-  | Abs_Rel       RelQuery
-  | Abs_CauseVal
-
+---------------------------------------------------------------------
+-- 5.0 Query
+---------------------------------------------------------------------
 
 data Query = Query
-  { _qryFrom    ∷ SystemPath
+  { _qryFrom    ∷ URITy
   , _qryWhere   ∷ Type
   , _qrySelect  ∷ Lens
   }
+
+
+
+
+---------------------------------------------------------------------
+-- 6.0 Random
+---------------------------------------------------------------------
+
+data Random =
+    RandomNumber Type
+  | MapRandom Param Abstraction
 
 
