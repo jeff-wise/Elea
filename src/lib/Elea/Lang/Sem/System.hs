@@ -7,94 +7,120 @@ module Elea.Lang.Sem.System where
 import Elea.Lang.Term.System
 
 
-data Context = Ctx System Val
-             -- Log ?
-             -- monad instance?
-
-  { _universe   ∷  Universe
-  , _currSysVar ∷  TVar System
-  , _trigSysVal ∷  Val
-  }
-
-
--- effects must be executed in IO monad
--- so pass them out of stm monad.
-
-
-evalEffects ∷ EffectQueue → IO ()  
-
--- run each effect in order 
--- make sure higher priority ones *complete* first
--- how?
+import qualified Data.HashMap.Strict as HMS
 
 
 
-create ∷ Location → Cons_Membrane → STM Context
-create loc membCons = do
-  let parentSys = find loc -- maybe 
-      membrane = consMembrane membCons
-      newSystem = System membrane emptyInterior
+-- | Global Variables
 
--- have new system, that's easy
--- make sure parent system exists, throw error
--- make sure parent membrane allows new system
--- given value of new system, calculate effects of parent system
-
-  
-  
+-- | Every thread accesses the event map
+-- if it needs to run a continuation
+eventMapVar ∷ STM (TVar (HMS.HashMap Event Bool))
+eventMapVar = newTVar HMS.empty
 
 
--- how to do this?
-update ∷ Location → Cons_Membrane → STM Context
+-- | Every thread accesses the universe
+universeVar ∷ (STM (TVar System))
+universeVar = error "Universe does not exist!"
+
+
+
+
+
+type EventMap = HMS.HashMap Event Bool
+
 
 
 
 
--- need to know if create/update ?
--- find parent system
-
-
-data Cons_System =
-  Cons_System URITy Cons_Membrane
-
-
-
--- | Membrane Constructor
-data Cons_Membrane =
-  Cons_Membrane
-    Cons_Value
-    (Maybe Cons_Interaction)
-    Cons_Constraints
+  
+waitForDeps ∷ [Event] → STM ()
+waitForDeps depEvents = do
+  eventMap ← readTVar eventMapVar
+  check $ verifyDeps depEvents eventMap
+  where
+    verifyDeps ∷ [Event] → EventMap → Bool 
+    verifyDeps depEvents eventMap =
+      let mEvOccs = mapM (flip HMS.lookup $ eventMap) depEvents
+      in  case mEvOccs of
+            Just evOccs → and evOccs
+            Nothing     → False
 
 
 
 
-consMembrane ∷ Cons_Membrane → Membrane
-consMembrane (Cons_Membrane valCons mInterCons cnstrsCons) = 
-  let value = consValue valCons
-      mInteraction = consInteraction <$> mInterCons
-      constraints = consConstraints cnstrsCons
-  in  Membrane value mInteraction constraints
+
+effectThread ∷ ActionContext → Effect → IO ()
+effectThread ac (Effect deps occs sups force) = do
+  atomically waitForDeps
+  (effects, ts') ← evalForce ts force
+  atomically finishEffect
+    
+
+
+
+finishEffect ∷ STM ()
+finishEffect = do
+  let updateOccurrences evMap = L.foldl' $ 
+        (\ev evMap → HMS.insert ev True evMap) evMap occs
+      updateSuppressions evMap = L.foldl' $ 
+        (\ev evMap → HMS.insert ev False evMap) evMap sups
+  in  modifyTVar eventMapVar
+        (updateOccurrences >>> updateSuppressions)
+      
       
 
 
+evalForce ∷ ThreadState → Force → IO ()
+evalForce ts force =
+  case force of
+    Force_Create loc membCons →
+      atomically $ -- eval monad create ts loc membCons
 
-consValue ∷ Context → Cons_Value → Value
-consValue ctx (Cons_Value valSyn) = synthesize ctx valSyn
 
 
 
-consInteraction ∷ Cons_Interaction → Interaction
+create ∷ Location → Cons_Membrane → EffectThread ()
+create loc membCons = do
+  let parentSys = find loc
+  -- verify parent sys exists
+  membrane ← consMembrane membCons
+  -- verify constraints of parent sys
+  let newSystem = System membrane emptyInterior
+  -- add system
+  -- calculate interaction effects
+
+
+
+
+
+consMembrane ∷ Cons_Membrane → Action Membrane
+consMembrane (Cons_Membrane valCons mInterCons cnstrsCons) = do
+  value ← consValue valCons
+  mInteraction ← consInteraction <$> mInterCons
+  constraints ← consConstraints cnstrsCons
+  return $ Membrane value mInteraction constraints
+
+
+
+consValue ∷ Cons_Value → Field Value
+consValue (Cons_Value syn) = synthesize syn
+
+
+
+consInteraction ∷ Cons_Interaction → Field Interaction
+consInteraction (Cons_Interaction causeCons effects) =
+  Interaction <$> (consCause causeCons) <*> (return effects)
+
+
 
 
 consConstraints ∷ Cons_Constraints → Constraints
+consConstraints (Cons_Constraints → Constraints
 
 
-consCause ∷ Cons_Cause → Cause
+consCause ∷ Cons_Cause → EffectThread Cause
 
-
-
-addSystem ∷ 
 
 
 
@@ -130,4 +156,7 @@ find (Context mainSys currSysVar _) location =
                           fromJust $ HMS.lookup valOfSys childMap
                             
        
+
+
+
 

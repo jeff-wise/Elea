@@ -23,8 +23,6 @@ import Elea.Lang.Term.Basic
 import Elea.Lang.Index.Value
 
 
-import qualified Data.PQueue.Min as PQ
-
 
 
 ---------------------------------------------------------------------
@@ -52,7 +50,7 @@ data Interior =
 
 
 
-data Interaction = Interaction Cause EffectQueue
+data Interaction = Interaction Cause [Effect]
 
 
 data Constraint = 
@@ -96,7 +94,7 @@ newtype Cons_Value = Cons_Value Synthesis
 
 -- | Interaction Constructor
 data Cons_Interaction =
-  Cons_Interaction Cons_Cause EffectQueue
+  Cons_Interaction Cons_Cause [Effect]
 
 
 
@@ -177,9 +175,30 @@ data Cause =
 
 
 
-data Effect = Effect Int Force
- 
-type EffectQueue = PQ.MinQueue Effect
+
+
+-- | An event is an arbitrary occurence.
+-- It either happened or did not yet happen.
+-- The global event map tracks event occurrences.
+type Event = T.Text
+
+
+
+-- | Effect
+-- Parameters:
+--  Dependencies - This event depends on the following events
+--                having occurred.
+--  Occurrences - Events triggered by this effect.
+--  Supressions - Occurrences which are 'forgotten' after this
+--                effect occurs.
+data Effect =
+  Effect
+    [Event]
+    [Event]
+    [Event]
+    Force
+
+
 
 
 ---------------------------------------------------------------------
@@ -193,22 +212,24 @@ data Cons_Cause =
 
 
 
----------------------------------------------------------------------
--- 3.3 Ordered Effects
----------------------------------------------------------------------
 
-instance Ord Effect where
-  compare (Effect i _) (Effect j _) = i `compare` j
+-- 
+-- group finite set (text id) pointers to systems
+-- group complete cause
+--
+-- how to deal with sets of values/ map fold
+-- can just have map transformation ?
+-- fold -- need ind data ?
+-- then just change inference rules
+--
+-- non determinism? built in model like group
+--    to deal with 'map' 
+--
+-- group query necessary
+--
+--
+-- copy / clear systems
 
 
-
-
-
----------------------------------------------------------------------
--- 3.2 Cause/Effects Utilities
----------------------------------------------------------------------
-
-effectQueue ∷ [Effect] → EffectQueue
-effectQueue = L.foldl' (flip PQ.insert) PQ.empty
 
 

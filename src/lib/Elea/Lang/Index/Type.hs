@@ -52,8 +52,9 @@ type MatchKey = Int
 
 type KeySet = Set.Set MatchKey
 
+type KeyCounter = Int
 
-data InsCtx = InsCtx KeyCounter MatchKey
+type NodeUpdate = State KeyCounter Node_Ty 
 
 
 
@@ -102,6 +103,7 @@ data Node_SetTy = Node_SetTy
 -- Says which combinatios of returned matched keys
 -- constitute a valid match. 'Logic' to determine
 -- which matches are correct at a node.
+-- Tree. search from bottom up
 data Node_AndTy = Node_AndTy
   { _keyTotalMap  ∷  HMS.HashMap MatchKey Int
   , _keyTypeMap   ∷  HMS.HashMap MatchKey KeyType
@@ -241,37 +243,25 @@ insertTy (Ty_Num  numTy ) insCtx tyNode =
 
 
 
-insertSetTy ∷ SetTy → MatchKey → Node_SetTy → Node_SetTy
-insertSetTy (WithElem    ty    ) key setTyNode =
-  setTyNode & withElemTy %~ insertTy ty key
---insertSetTy (WithoutElem ty    ) key setTyNode =
---  setTyNode & withoutElemTy %~ 
---    HMS.insertWith Set.union ty (Set.singleton key)
-insertSetTy (SetWithSize num   ) key setTyNode =
-  let size = case num of
-              (Z i) → i
-              (R d) → maybe (-1) id $ doubleToInt d
-  in  if size < 0
-        then setTyNode
-        else setTyNode & setWithSizeTy %~
-              HMS.insertWith Set.union size (Set.singleton key)
+
+insertSetTy ∷ SetTy → InsContext → Node_SetTy → Node_SetTy
+
+insertSetTy (WithElem    ty  ) insCtx setTyNode =
+  setTyNode & withElemTy %~ insertTy ty insCtx
+
+insertSetTy (SetOfSize size) key setTyNode =
+  let updateSizeNode = HMS.insertWith Set.union size (Set.singleton key)
+  in  if size < 0 then setTyNode
+                  else setTyNode & setWithSizeTy %~ updateSizeNode
+
 insertSetTy AnySet               key setTyNode =
   setTyNode & anySetTy %~ (Set.insert key)
 
 
 
--- TODO negative indices
-insertArrTy ∷ ArrayTy → MatchKey → Node_ArrTy → Node_ArrTy
-insertArrTy (IsArray   tySeq ) key arrTyNode = 
-  let go EmptyL          EmptyL                 = Seq.empty
-      go (ty :< remTys)  EmptyL                 =
-        fmap (\x → insertTy x key newTypeNode) (ty <| remTys)
-      go EmptyL          (tyNode :< remTyNodes) = tyNode <| remTyNodes
-      go (ty :< remTys)  (tyNode :< remTyNodes) =
-           insertTy ty key tyNode 
-        <| go (viewl remTys) (viewl remTyNodes)
-  in  arrTyNode & isArrTy %~ (go (viewl tySeq) . viewl)
-insertArrTy (WithIndex num ty) key arrTyNode =
+
+insertArrTy ∷ ArrayTy → MatchKey → Node_Ty → NodeUpdate
+insertArrTy (WithIndex num ty) insCtx arrTyNode =
   case asInt num of
     Just idx → arrTyNode & withIdxTy %~ 
                   HMS.insertWith 
@@ -279,30 +269,66 @@ insertArrTy (WithIndex num ty) key arrTyNode =
                     idx
                     (insertTy ty key newTypeNode)
     Nothing  → arrTyNode
+
+insertArrTy (ArrOfSize size  ) insCtx arrTyNode =
+  let updateSizeNode = HMS.insertWith Set.union size (Set.singleton key)
+  in  if size < 0 then arrTyNode
+                  else arrTyNode & arrOfSizeTy %~ updateSizeNode
+
 insertArrTy AnyArray           key arrTyNode =
   arrTyNode & anyArrTy %~ (Set.insert key)
 
 
 
--- An OR type contains many types which can each be treated
+
+-- | An OR type contains many types which can each be treated
 -- as the type of the expression. So we insert the same key
 -- for each type in the OR type list
+insertOrTy ∷ OrTy → Matchkey → Node_Ty → NodeUpdate
+insertOrTy (OrTy tyList) insCtx tyNode =
+  let insOrTy node ty = insertTy ty insCtx node
+  in  L.foldl' insOrTy tyNode tyList
 
 
-insertOrTy ∷ AndTy → MatchKey → Node_AndTy → Node_AndTy
-  (insertTy ty2 insCtx . insertTy ty1 insCtx) tyNode
 
-insertAndTy ∷ AndTy → MatchKey → Node_AndTy → Node_AndTy
-insertAndTy (AndTy ty1 ty2) key (Node_AndTy (tyNode1, tyNode2)) =
-  Node_AndTy $ (insertTy ty1 key tyNode1, insertTy ty2 key tyNode2)
+
+insertAndTy ∷ AndTy → MatchKey → Node_Ty → NodeUpdate
+insertAndTy (AndTy tyList) key tyNode =
+
+  let -- Adds key of some type as child of the AND Type
+      updateKeyMap newKey node = 
+          node & _node_AndTy %~
+            (over andKeyMap (HMS.insert newKey $ KeyRef key))
+      
+      --  Get key for type, add to node, and record key
+      addAndTy node ty = do
+        newKey ← get 
+        modify (+1)
+        return $ updateKeyMap newKey node 
+        insertTy ty newKey node
+    
+      -- Mark input key as final state
+      -- Record size of AND Type
+      updateKeyTotal =  
+  
+  in  F.foldrM addAndTy tyNode tyList
+    >>= (
+
+  return $ tyNode & _node_AndTy ~ andNode'
+-- assign key to each type in list
+-- adjust counter
+-- put in map and total
+
+
 
 
 data Node_AndTy = Node_AndTy
-  { _keyTotalMap  ∷  HMS.HashMap MatchKey Int
-  , _keyTypeMap   ∷  HMS.HashMap MatchKey KeyType
+  { _childCountMap ∷ HMS.HashMap MatchKey Int
+  , _nodeMap       ∷ HMS.HashMap MatchKey KeyType
   }
 
-data KeyType = KeyFinal | KeyRef MatchKey
+-- Tree. Is current key node or final state
+data AndKey = KeyFinal | KeyRef MatchKey
 
 
 
