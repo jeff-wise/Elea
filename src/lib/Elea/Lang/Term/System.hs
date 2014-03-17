@@ -1,22 +1,6 @@
 
 
-module Elea.Lang.Term.System
-  ( -- * System
-    --   $systemDesc
-    System (..)
-  , Membrane (..), Interior (..)
-  , Interaction (..)
-  , Constraints (..), UniqConstraint (..), CellConstraint (..)
-    -- ** System Constructors
-  , Cons_System (..)
-  , Cons_Membrane (..)
-    -- *** Membrane Constructors
-  , Cons_Value (..), Cons_Interaction (..), Cons_Constraints (..)
-    -- ** System Utilities
-  , emptyInterior, particle, free
-    -- * Force
-    -- * Cause/Effects
-  ) where
+module Elea.Lang.Term.System where
 
 
 import Elea.Lang.Term.Basic
@@ -25,42 +9,128 @@ import Elea.Lang.Index.Value
 
 
 
----------------------------------------------------------------------
--- 1. System
----------------------------------------------------------------------
+data System = 
+  System
+    Value
+    (Maybe Interaction)
+    (Maybe Interior)
+    (HMS.HashMap T.Text ActionPotential)
 
 
 
--- | System
-data System = System Membrane Interior
-
-
--- | System Membrane
--- Parameters
---  * Value - 
-data Membrane =
-  Membrane Value (Maybe Interaction) [Constraint]
+data Interaction =
+  Interaction Cause [Force]
 
 
 
 data Interior =
   Interior
+    [Constraint]
+    Collection
+
+
+data Collection =
+  Collection
     (TVar (HMS.HashMap Value (TVar System)))
     (TVar ValueIndex)
 
 
 
-data Interaction = Interaction Cause [Effect]
+data ActionPotential = ActionPotential (TVar (HMS.HashMap T.Text Bool))
+
+
+data Force = F_System Cons_System
+
+
+
+data Cons_System =
+  Cons_System
+    Cons_Value
+    Cons_Interaction
+    Cons_Interior
+
+
+data Cons_Value = Cons_Value Function [Projection]
+
+data Cons_Interaction = Cons_Interaction Cons_Cause [Force]
+
+data Cons_Interior = Cons_Interior [Cons_Constraint]
+
+
+
+
+data Charge = Charge T.Text T.Text
+
+
+data Path = Path (Maybe UniversePath) SystemPath
+
+
+data UniversePath =
+    Web URI
+  | Lib T.Text
+
+
+
+
+
+
+
+data Cons_Cause = Cons_Activation T.Text
+
+
+data Cause =
+    Activation T.Text
+  | Addition Type
+  | Rejection
+
+
+data Cons_Constraint = 
+    Cons_Unique [Lens]
+  | Cons_CellTy SystemPath
 
 
 data Constraint = 
-    Cnstr_Unique [Lens]
-  | Cnstr_CellTy Type
+    Unique [Lens]
+  | CellTy Type
 
 
 
-data Location =
-    Absolute [Type]
+
+
+
+
+
+----------------------------------------------------------
+
+type Signal = T.Text
+type ReceptorName = T.Text
+type CellName = T.Text
+type ReceptorShape = Type
+
+
+data ActionPotential = ActionPotential Signal [Force]
+
+
+newtype Cell = Cell [Receptor]
+
+data Receptor = Receptor ReceptorName ReceptorShape
+
+
+data System = System Value (HMS.HashMap T.Text Cell)
+
+
+data Force = Create Function Projection
+
+
+data Projection = Projection Lens Path Type
+
+
+data Path = Path SystemPath CellName
+
+
+
+data SystemPath =
+    Absolute [Type] 
   | Relative [Type]
   | Parent
   | Here
@@ -68,168 +138,5 @@ data Location =
 
 
 
----------------------------------------------------------------------
--- 1.2 System Constructors
----------------------------------------------------------------------
-
-
--- | Membrane Constructor
---  * Membrane Constructor (Cons_Membrane) - How to build the
---      system's membrane, which gives the system most
---      of its important properties.
-data Cons_Membrane =
-  Cons_Membrane
-    Cons_Value
-    (Maybe Cons_Interaction)
-    Cons_Constraints
-
-
-
--- | Value Constructor
--- The value of the membrane is a function of the
--- current state of the system, which has no side effects.
-newtype Cons_Value = Cons_Value Synthesis
-
-
-
--- | Interaction Constructor
-data Cons_Interaction =
-  Cons_Interaction Cons_Cause [Effect]
-
-
-
--- | Constraints Constructor
-data Cons_Constraints = Cons_Constraints [Cons_Constraint]
-
-data Cons_Constraint = 
-    Cnstr_Unique [Lens]
-  | Cnstr_CellTy Type
-
-
-
-
-
-
----------------------------------------------------------------------
--- 1.3 Utility Functions
----------------------------------------------------------------------
-
--- | Create an empty system interior
-emptyInterior ∷ STM Interior
-emptyInterior = Interior
-            <$> newTVar HMS.empty
-            <*> newTVar newValueIndex
-
-
-
--- | A particle is a system with no subsystems (cells)
-particle ∷ Cons_Constraints
-particle = Cons_Constraints [] (Syn.tyConst Ty_None)
-
-
--- | A Constraints constructor which defines a free system.
--- A free system has no contraints.
-free ∷ Cons_Constraints
-free = Cons_Constraints [] (Syn.tyConst Ty_Any)
-
-
-
----------------------------------------------------------------------
--- 2.0 Force
----------------------------------------------------------------------
-
-data Force =
-    Force_Create  Location Cons_Membrane
-  | Force_Update  Location Type Cons_Membrane
-  | Force_Destroy Location
-  | Force_IO      IOAction
-
-
-
-data IOAction =
-    IOPerform (Value → IO ())
-  | IORead  (Value → IO Text) EffectQueue
-
-
-
-
----------------------------------------------------------------------
--- 3.0 Cause & Effects
----------------------------------------------------------------------
-
-type Trigger = Value
-
-
--- | Cause
--- A system event.
-data Cause =
-    -- | The system reached a threshold number
-    -- of cells of a specified 'Type'
-    -- The 'Trigger' is a set of values of the cells
-    -- of the specified type
-    OnThreshold Int Type
-    -- | A new cell was added to the system.
-    -- The 'Trigger' is the new cell's value
-  | OnNewCell Type
-  | OnRejection
-
-
-
-
-
--- | An event is an arbitrary occurence.
--- It either happened or did not yet happen.
--- The global event map tracks event occurrences.
-type Event = T.Text
-
-
-
--- | Effect
--- Parameters:
---  Dependencies - This event depends on the following events
---                having occurred.
---  Occurrences - Events triggered by this effect.
---  Supressions - Occurrences which are 'forgotten' after this
---                effect occurs.
-data Effect =
-  Effect
-    [Event]
-    [Event]
-    [Event]
-    Force
-
-
-
-
----------------------------------------------------------------------
--- 3.1 Cause/Effects Constructors
----------------------------------------------------------------------
-
-data Cons_Cause = 
-    Cons_OnThreshold Synthesis Synthesis
-  | Cons_OnNewCell Synthesis
-  | Cons_OnRejection
-
-
-
-
--- 
--- group finite set (text id) pointers to systems
--- group complete cause
---
--- how to deal with sets of values/ map fold
--- can just have map transformation ?
--- fold -- need ind data ?
--- then just change inference rules
---
--- non determinism? built in model like group
---    to deal with 'map' 
---
--- group query necessary
---
---
--- copy / clear systems
-
-
-
-
+-- Need to mark things as FINAL
+-- rename dict to record
