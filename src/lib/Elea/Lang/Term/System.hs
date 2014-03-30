@@ -3,140 +3,233 @@
 module Elea.Lang.Term.System where
 
 
-import Elea.Lang.Term.Basic
-import Elea.Lang.Index.Value
 
+import Elea.Lang.Term.Transformer
 
 
+------------------------ SYSTEM ---------------------------
 
-data System = 
-  System
-    Value
-    (Maybe Interaction)
-    (Maybe Interior)
-    (HMS.HashMap T.Text ActionPotential)
+type BroadcastTrans = Signal → Value → STM [Reaction]
+type SendTrans = Signal → STM (Maybe Reaction)
 
+type AddParticleTrans = Particle → STM ()
 
+type TriggeredTrans = Value → STM [Signal]
 
-data Interaction =
-  Interaction Cause [Force]
 
+data System =
+  Sys
+    BroadcastTrans
+    AddParticleTrans
+    TriggeredTrans
 
 
-data Interior =
-  Interior
-    [Constraint]
-    Collection
 
+---------------------- FORCE INTERFACE --------------------
 
-data Collection =
-  Collection
-    (TVar (HMS.HashMap Value (TVar System)))
-    (TVar ValueIndex)
 
+type SynthesizeTrans = Context → Synthesis → STM ()
 
+type TransformTrans = Transformer → STM Value
+type ProjectTrans = Projection → Value → STM ()
 
-data ActionPotential = ActionPotential (TVar (HMS.HashMap T.Text Bool))
+type EncodeTrans = Context → Encoding → STM ()
 
 
-data Force = F_System Cons_System
+data ForceI =
+  ForceI SynthesizeTrans EncodeTrans
 
 
 
-data Cons_System =
-  Cons_System
-    Cons_Value
-    Cons_Interaction
-    Cons_Interior
 
 
-data Cons_Value = Cons_Value Function [Projection]
+--------------------- RUNTIME INTERFACE --------------------
 
-data Cons_Interaction = Cons_Interaction Cons_Cause [Force]
+-- | Runtime transactions
+type AppendActionTrans = Action → STM ()
+type FindSystemTrans
+type QueryTrans
 
-data Cons_Interior = Cons_Interior [Cons_Constraint]
 
+data RuntimeI =
+  RunI
+    AppendActionTrans
+    FindSystemTrans
+    QueryTrans
 
 
+-- | Runtime Exceptions
+data RuntimeException =
+    SystemNotFound
+  | DuplicateParticle
 
-data Charge = Charge T.Text T.Text
 
 
-data Path = Path (Maybe UniversePath) SystemPath
 
 
-data UniversePath =
-    Web URI
-  | Lib T.Text
+-- Action
+-----------------------------------------------------------
 
+-- ***** Def Forms *****
 
+data Projection = Projection Lens SystemId
 
+type ForceId = T.Text
 
 
+data Force =
+    F_Syn Synthesis
+  | F_Enc Encoding 
+    
 
+data Synthesis = Syn Transformer [Projection]
 
-data Cons_Cause = Cons_Activation T.Text
+data Encoding = Enc SystemId RcptrId Cons_Type
 
 
-data Cause =
-    Activation T.Text
-  | Addition Type
-  | Rejection
+--------------------- ACTION POTENTIAL --------------------
 
 
-data Cons_Constraint = 
-    Cons_Unique [Lens]
-  | Cons_CellTy SystemPath
+-- ***** Introductory Forms
 
+type ActnPotlId = T.Text
+type EventClass = Lens
+data EventInstance = Value
 
-data Constraint = 
-    Unique [Lens]
-  | CellTy Type
 
+data Reaction = Reaction ParamMap [ForceId]
 
+type ParamMap = HMS.HashMap Signal Value
 
 
+data ActionPotential = AP EventClass [Signal] [ForceId]
 
 
+data APState = Inhibited | Active
 
 
-----------------------------------------------------------
 
-type Signal = T.Text
-type ReceptorName = T.Text
-type CellName = T.Text
-type ReceptorShape = Type
+-- ***** Evaluation Forms
 
+type SignalIndex = HMS.HashMap Signal [APId]
 
-data ActionPotential = ActionPotential Signal [Force]
+-- event occurs per AP
+-- event is triggering of action
+-- so signal goes to some action, but one action
+--   could have many instances simultaneously occurring
+--   so must map signal to event, using event class
+-- rule: each signal can can only cause one reaction per AP
+type APTransMap = HMS.HasHMap ApId (APSTate, Trans_ActionPotential)
 
+-- because STM works on vars, can define functions with
+-- fixed structure. do not need state function
 
-newtype Cell = Cell [Receptor]
 
-data Receptor = Receptor ReceptorName ReceptorShape
+type Event = HMS.HashMap Signal (Maybe Value)
 
+type EventMap = HMS.HashMap Value (TVar Event)
 
-data System = System Value (HMS.HashMap T.Text Cell)
 
 
-data Force = Create Function Projection
 
+----------------------- RECEPTOR  -------------------------
 
-data Projection = Projection Lens Path Type
+-- ***** Introductory Forms
 
+type ReceptorId = T.Text
+type Signal = RcptrId
 
-data Path = Path SystemPath CellName
+data Receptor = Receptor ReceptorId Type
 
 
 
-data SystemPath =
-    Absolute [Type] 
-  | Relative [Type]
-  | Parent
-  | Here
+-- ***** Evaluation Forms
 
+data ReceptorDB =
+  RecpDB
+    TypeIndex
+    (HMS.HashMap Type Receptor)
 
 
+newReceptorDB ∷ ReceptorDB
+newReceptorDB = RecpDB TI.newTypeIndex HMS.empty
 
--- Need to mark things as FINAL
--- rename dict to record
+
+
+
+------------------------ PARTICLE --------------------------
+
+newtype Particle = Part Value
+
+data ParticleDB =
+  PartDB
+    ValueIndex
+    (HMS.HashMap Value Particle)
+
+
+
+type SystemId = T.Text
+
+
+type Universe = HMS.HashMap SystemId (TVar System)
+
+type ActionQueue = TQueue Action
+
+
+
+
+
+
+data Program =
+  Program
+    (ForceId → Force)
+
+
+
+data Context = Ctx System ParamMap
+
+
+-- An AP fired in some system
+data Action = Action System Reaction
+
+
+
+-- always write new trans
+-- sometimes put in default vals
+-- sometimes recv them
+-- add typeclass?
+
+
+-- interp vs compile
+-- forceId resolution
+
+
+-- Crashes when force not present.
+-- MUST be checked before added.
+-- one of static properties
+getForce ∷ ForceDict → ForceId → Maybe Force
+getForce forceHM forceId = fromJust $ HMS.lookup forceId forceHM
+
+
+
+
+
+
+handleError ∷ RuntimeException → STM a
+handleError SystemNotFound    = return ()
+handleError DuplicateParticle = return ()
+
+
+
+-- what need to init?
+--
+
+init ∷ IO ()
+init = do
+
+
+
+
+
+
+

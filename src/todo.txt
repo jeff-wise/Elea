@@ -40,3 +40,9 @@ synthesis: use random numbers as index? adjaceny list representation
 
 templates: explanation, design decisions, etc..
           use int as params, gui can abstract over with tags if needed
+
+
+will have to catch haskell exceptions e.g. divide by zero
+
+
+should update index to check for dups?

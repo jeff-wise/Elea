@@ -7,156 +7,210 @@ module Elea.Lang.Sem.System where
 import Elea.Lang.Term.System
 
 
-import qualified Data.HashMap.Strict as HMS
 
 
 
--- | Global Variables
+----------------------- BROADCAST --------------------------
 
--- | Every thread accesses the event map
--- if it needs to run a continuation
-eventMapVar ∷ STM (TVar (HMS.HashMap Event Bool))
-eventMapVar = newTVar HMS.empty
+newBroadcastTrans ∷ BroadcastTrans
+newBroadcastTrans = broadcast (newTVar [])
 
 
--- | Every thread accesses the universe
-universeVar ∷ (STM (TVar System))
-universeVar = error "Universe does not exist!"
-
-
-
-
-
-type EventMap = HMS.HashMap Event Bool
-
+broadcast ∷ TVar APTransMap → Signal → Value → STM [Reaction]
+broadcast apListVar signal value = do
+  apTransMap ← readTVar apListVar
+  mReactions ← forM (elems apTransMap) (\(st, send) →
+                  case st of
+                    Active    → send signal value
+                    Inhibited → return Nothing
+                )
+  return $ catMaybes mReactions
 
 
 
 
+-------------------------- SEND ---------------------------
+
+newSendTrans ∷ ActionPotential → SendTrans
+newSendTrans ap = sendTrans ap (HMS.empty)
+
+
+sendTrans ∷ ActionPotential → TVar EventMap → 
+             Signal → Value → STM (Maybe Reaction)
+sendTrans (AP evClass signals actions) eventMapVar signal value = do
+  let evInstance = get evClass value
+  eventVar ← getEventVar evInstance eventMap
+  event ← readTVar eventVar
+  -- Update Event 
+  case eventUpdate signal value event of
+    -- Complete: delete event variable, return parameters
+    Left  paramMap → do 
+      modifyTVar eventMapVar (HMS.delete evInstance eventMap)
+      return $ Just $ Reaction paramMap actions
+    -- Incomplete: Write back into variable
+    Right event'   → do
+      modifyTVar eventVar event' 
+      return Nothing
+
+  where
+
+    getEventVar ∷ EventInstance → TVar EventMap → STM (TVar Event)
+    getEventVar evInstance eventMapVar = do
+      eventMap ← readTVar eventMapVar
+      case HMS.lookup evInstance eventMap of
+        Just eventVar → return eventVar
+        Nothing       → do
+          let eventVar = newTVar $ HMS.fromList
+                          [(signal, Nothing) | signal ← signals]
+          modifyTVar eventMapVar (HMS.insert evInstance eventVar)
+          return eventVar
+
+    eventUpdate ∷ Event → Either ParamMap Event
+    eventUpdate eventHM =
+      let eventHM' = HMS.insert signal (Just value) eventHM
+      if all isJust $ elems eventHM'
+        then Left HMS.map eventHM' fromJust
+        else Right eventHM'
+
+
+
+
+---------------------- ADD PARTICLE ------------------------
+
+newAddParticleTrans ∷ AddParticleTrans
+newAddParticleTrans = 
+  let particleDBVar = newTVar $ ParticleDB newValueIndex HMS.empty
+  in  addParticleTrans particleDBVar
+
+
+addParticleTrans ∷ TVar ParticleDB → Particle → STM ()
+addParticleTrans particleDBVar (Part partVal) = do
+  particleDB ← readTVar particleDBVar
+  case insertParticle newParticle particleDB of
+    Just particleDB' → writeTVar particleDBVar particleDB'
+    Nothing          → throwSTM DuplicateParticle
+
+  where
+
+    -- Should return Nothing on dup
+    insertParticle ∷ ParticleDB → Maybe ParticleDB
+    insertParticle (PartDB valIdx partHM) = do
+      guard $ not $ HMS.member partVal partHM
+      return $ ParticleDB
+        (VI.insert partVal valIdx )
+        (HMS.insert partVal part partHM)
+ 
+
+
+
+------------------------ PROJECT ---------------------------
+
+
+newProjectTrans ∷ RuntimeI → ProjectTrans
+newProjectTrans (RunI appendAction findSystem) = projectTrans
+
+  where
+
+    projectTrans ∷ Projection → Value → STM ()
+    projectTrans (Projection lens sysId) value = do
+      let valFragment = get lens value
+      targetSys ← findSystem univVar sysId
+      let (Sys addParticle triggered broadcast) = targetSys
+      addParticle $ Part valFragment
+      signals ← triggered valFragment
+      reactions ← concat <$> forM signals (\signal →
+                     broadcast signal valFragment
+                   )
+      forM reactions $ appendAction . Action targetSys
+
+
+
+
+----------------------- TRIGGERED --------------------------
+
+newTriggeredTrans ∷ TriggeredTrans
+newTriggeredTrans = triggeredTrans (newTVar newReceptorDB)
+
+
+triggeredTrans ∷ TVar ReceptorDB → Value → STM [Signal]
+triggeredTrans receptorDBVar value = do
+  receptorDB ← readTVar receptorDBVar
+  return $ triggered receptorDB
   
-waitForDeps ∷ [Event] → STM ()
-waitForDeps depEvents = do
-  eventMap ← readTVar eventMapVar
-  check $ verifyDeps depEvents eventMap
   where
-    verifyDeps ∷ [Event] → EventMap → Bool 
-    verifyDeps depEvents eventMap =
-      let mEvOccs = mapM (flip HMS.lookup $ eventMap) depEvents
-      in  case mEvOccs of
-            Just evOccs → and evOccs
-            Nothing     → False
+
+    triggered ∷ ReceptorDB → [Signal]
+    triggered (RecpDB tyIdx recpMap) =
+      let getSignal ty =  case fromJust $ HMS.lookup ty recpMap of
+                            (Receptor recpId _) → recpid
+      in  L.map getSignal $ TI.lookup value tyIdx
+
+
+
+-- Global functions
+
+
+findSystem ∷ TVar Universe → SystemId → STM System
+findSystem univVar sysId = do
+  univ ← readTVar univVar
+  case HMS.lookup sysId univ of
+    Just sys → return sys
+    Nothing  → throwSTM SystemNotFound
+
+
+newTransformTrans ∷ Context → RuntimeI → TransformTrans
+newTransformTrans
+
+
+transformTrans ∷ Context → RuntimeI → TransformTrans
+
+  where
+    transform ∷ Context → Transformer → STM Value
+    transform ctx transformer =
+      case transformer of
 
 
 
 
 
-effectThread ∷ ActionContext → Effect → IO ()
-effectThread ac (Effect deps occs sups force) = do
-  atomically waitForDeps
-  (effects, ts') ← evalForce ts force
-  atomically finishEffect
+
+
+newSynthesizeTrans ∷ RuntimeI → SynthesizeTrans
+newSynthesizeTrans runtimeI = synthesizeTrans runtimeI
+
+  where
     
+    -- Create transform transaction
+    transform = newTransformTrans runtimeI
 
-
-
-finishEffect ∷ STM ()
-finishEffect = do
-  let updateOccurrences evMap = L.foldl' $ 
-        (\ev evMap → HMS.insert ev True evMap) evMap occs
-      updateSuppressions evMap = L.foldl' $ 
-        (\ev evMap → HMS.insert ev False evMap) evMap sups
-  in  modifyTVar eventMapVar
-        (updateOccurrences >>> updateSuppressions)
-      
-      
-
-
-evalForce ∷ ThreadState → Force → IO ()
-evalForce ts force =
-  case force of
-    Force_Create loc membCons →
-      atomically $ -- eval monad create ts loc membCons
-
-
-
-
-create ∷ Location → Cons_Membrane → EffectThread ()
-create loc membCons = do
-  let parentSys = find loc
-  -- verify parent sys exists
-  membrane ← consMembrane membCons
-  -- verify constraints of parent sys
-  let newSystem = System membrane emptyInterior
-  -- add system
-  -- calculate interaction effects
+    -- Create projection transaction 
+    project   = newProjectTrans runtimeI
+    
+    -- Synthesize a new particle
+    synthesizeTrans ∷ Context → Synthesis → STM ()
+    synthesizeTrans ctx (Synth transformer projs) =  
+      -- Run transformer to build new value
+      value ← transform ctx transformer
+      -- Project each value
+      mapM_ (project value) projs
 
 
 
 
 
-consMembrane ∷ Cons_Membrane → Action Membrane
-consMembrane (Cons_Membrane valCons mInterCons cnstrsCons) = do
-  value ← consValue valCons
-  mInteraction ← consInteraction <$> mInterCons
-  constraints ← consConstraints cnstrsCons
-  return $ Membrane value mInteraction constraints
+----------------------- PROCESSOR --------------------------
 
-
-
-consValue ∷ Cons_Value → Field Value
-consValue (Cons_Value syn) = synthesize syn
-
-
-
-consInteraction ∷ Cons_Interaction → Field Interaction
-consInteraction (Cons_Interaction causeCons effects) =
-  Interaction <$> (consCause causeCons) <*> (return effects)
-
-
-
-
-consConstraints ∷ Cons_Constraints → Constraints
-consConstraints (Cons_Constraints → Constraints
-
-
-consCause ∷ Cons_Cause → EffectThread Cause
-
-
-
-
-
-
--- TODO revise after more work
-find ∷ Context → Location → STM (Maybe (TVar System))
-find (Context mainSys currSysVar _) location =
-
-  case location of
-    -- Search from main system
-    (Absolute tyList) → search tyList mainSys
-    -- Search from current system
-    (Relative tyList) → search tyList currSysVar
-    -- Return current parent
-    (Parent         ) → view sysParent <$> readTVar currSysVar
-    -- Return current system
-    (Here           ) → return $ Just currSysVar
-
-  where
-
-    find' ∷ [Type] → TVar System → STM (Maybe (TVar System))
-    -- Done searching, returned matched systems
-    find' []          sysVar = return $ Just sysVar
-    -- Done search, returned matched systems
-    find' (ty:remTys) sysVar = do
-      system     ← readTVar sysVar
-      childIndex ← readTVar (system^.sysChildIndex)
-      childMap   ← readTVar (system^.sysChildMap)
-      case HS.toList $ VI.lookup ty childIndex of
-        []           → return Nothing
-        (valOfSys:_) → search remTys $
-                          fromJust $ HMS.lookup valOfSys childMap
-                            
-       
-
+processor ∷ Program → ForceI → Action → IO ()
+processor (ProgramI getForce)
+             (ForceI synthesize encode)
+             (Action sys (Reaction paramMap forceIds)) = do
+  forM forceIds (\forceId → do
+    let force = map getForce forceId
+        ctx   = Ctx sys paramMap 
+    case force of 
+      (F_Syn syn) → forkIO $ atomically $ synthesize ctx syn
+      (F_Enc enc) → forkIO $ atomically $ encode ctx enc
+  )
 
 
 

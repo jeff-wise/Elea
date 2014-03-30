@@ -1,6 +1,6 @@
 
 
-module Elea.Lang.Atom.Index.Type (
+module Elea.Lang.Index.Type (
     TypeIndex
   , newTypeIndex
   , insert, lookup
@@ -25,24 +25,7 @@ import qualified Data.Text as T
 
 
 
--- TODO unique insertion
--- TODO deletion
-
-
-
--- Or and And types
---
--- Or, just insert multiple times?
---
--- abstract over keys
--- and/or create new key for each case
--- but ands...must return each key
-
-
-
----------------------------------------------------------------------
--- Types
----------------------------------------------------------------------
+---------------------------- TYPES -------------------------
 
 
 -- | A key which identifies a particular type.
@@ -50,11 +33,22 @@ import qualified Data.Text as T
 -- that type node should return the corresponding key.
 type MatchKey = Int
 
+
+-- | A set of keys
+-- A keyset at a terminating node indicates that
+-- its path intersects multiple types
 type KeySet = Set.Set MatchKey
 
-type KeyCounter = Int
 
-type NodeUpdate = State KeyCounter Node_Ty 
+-- | Type of 'MatchKey'
+data KeyType =
+    -- | The key represents an inserted type
+    KeyFinal        
+    -- | The key is part of an intersection type
+  | KeyRef MatchKey
+
+-- | Ensure that all keys are unique
+type KeyCounter = Int
 
 
 
@@ -67,21 +61,53 @@ data TypeIndex = TypeIndex
   }
 
 
-
+-- | Type Node
+-- Merges multiple types into one large union type.
+--
+--          *           *                    *
+--          / \         / \              /       \
+--          G  Y       H   Z   ==>     (G1,H2)   (Y1,Z2)
+--         / \  \     /               /      \      \
+--        A   B  C   L              (A1,L2)  (B1)    (C1)
+--
+--  * Enables types with similar structure to be examined
+--    together, without traversing the same paths
+--    in each type repeatedly.
+--    Instead of searching G -> A, and then H -> L, a lookup
+--    now only needs to examine (G1,H2) -> (A1,L2), reducing
+--    the number of node traversals which could be expensive
+--    when many similar types are being examined.
+--  * Types that have same structure but vary slightly may
+--    be merged into an optimal structure e.g. use of ordered
+--    maps with numeric types.
+--    Suppose (G1,H2) were each IsNumber types. Instead of
+--    individually checking our input against each IsNumber type
+--    at the node, we could store G1, H2, etc.. in an ordered
+--    map (binary tree) for fast lookup of all types which are
+--    equal to the input at this node.
+--
+--  Intersection types have multiple member types which must
+--  each be satisfied in order to satisfy the type.
+--  Therefore, all inserted keys are marked as final or hypo.
+--  Final keys are returned. Hypo keys are added to a set of
+--  hypotheses for an associated key. That associated key is
+--  'derived' when all of its antecedent keys are discovered.
+--  The derived key may be final or hypothetical.
+--
 data Node_Ty = Node_Ty
-  , _node_DictTy  ∷  Node_DictTy
+  { _node_RecTy   ∷  Node_RecTy
   , _node_ArrTy   ∷  Node_ArrTy
   , _node_SetTy   ∷  Node_SetTy
   , _node_TextTy  ∷  Node_TextTy
   , _node_NumTy   ∷  Node_NumTy
-  , _node_AndTy   ∷  Node_AndTy
+  , _keyMap       ∷  HMS.HashMap MatchKey KeyType
   }
 
 
 
-data Node_DictTy = Node_DictTy
+data Node_RecTy = Node_RecTy
   { _hasEntryTy   ∷ HMS.HashMap T.Text Node_Ty
-  , _dictOfSizeTy ∷ HMS.HashMap Int KeySet
+  , _recOfSizeTy ∷ HMS.HashMap Int KeySet
   , _anyDictTy    ∷ KeySet
   }
 
@@ -100,16 +126,6 @@ data Node_SetTy = Node_SetTy
   }
 
 
--- Says which combinatios of returned matched keys
--- constitute a valid match. 'Logic' to determine
--- which matches are correct at a node.
--- Tree. search from bottom up
-data Node_AndTy = Node_AndTy
-  { _keyTotalMap  ∷  HMS.HashMap MatchKey Int
-  , _keyTypeMap   ∷  HMS.HashMap MatchKey KeyType
-  }
-
-data KeyType = KeyFinal | KeyRef MatchKey
 
 
 
@@ -139,20 +155,18 @@ data Node_NumTy = Node_NumTy
 
 -- Lenses
 makeLenses ''Node_Ty
-makeLenses ''Node_SetTy
+makeLenses ''Node_RecTy
 makeLenses ''Node_ArrTy
+makeLenses ''Node_SetTy
 makeLenses ''Node_TextTy
 makeLenses ''Node_NumTy
-makeLenses ''Node_SymTy
 
 
 
 
----------------------------------------------------------------------
--- Constructors
----------------------------------------------------------------------
+------------------------ CONSTRUCTORS ----------------------
 
-
+-- | Create a new Type Index
 newTypeIndex ∷ TypeIndex
 newTypeIndex = TypeIndex
   { _tyNode       = newTypeNode
@@ -161,7 +175,7 @@ newTypeIndex = TypeIndex
   }
 
 
--- | Lazily build a type node 
+-- | Lazily construct a new Type Node
 newTypeNode ∷ Node_Ty
 newTypeNode = Node_Ty
   { _node_DictTy  = Node_DictTy
@@ -202,10 +216,7 @@ newTypeNode = Node_Ty
 
 
 
----------------------------------------------------------------------
--- Insert Type
----------------------------------------------------------------------
-
+--------------------------- INSERT -------------------------
 
 
 insert ∷ Type → TypeIndex → TypeIndex
@@ -218,36 +229,36 @@ insert ty (TypeIndex tyNode tyMap tyKeyCounter) =
 
 
 
-insertTy ∷ Type → InsCtx → Node_Ty → Node_Ty
+insertTy ∷ Type → MatchKey → Node_Ty → Node_Ty
 
-insertTy (Ty_Dict dictTy) insCtx tyNode =
-  tyNode & node_DictTy  %~ (insertDictTy dictTy insCtx)
+insertTy (Ty_Dict dictTy) key tyNode =
+  tyNode & node_DictTy  %~ (insertDictTy dictTy key)
 
-insertTy (Ty_Arr  arrTy ) insCtx tyNode =
-  tyNode & node_ArrTy   %~ (insertArrTy  arrTy  insCtx)
+insertTy (Ty_Arr  arrTy ) key tyNode =
+  tyNode & node_ArrTy   %~ (insertArrTy  arrTy  key)
 
-insertTy (Ty_Set  setTy ) insCtx tyNode =
-  tyNode & node_SetTy   %~ (insertSetTy  setTy  insCtx)
+insertTy (Ty_Set  setTy ) key tyNode =
+  tyNode & node_SetTy   %~ (insertSetTy  setTy  key)
 
-insertTy (Ty_And  andTy ) insCtx tyNode =
-  tyNode & node_AndTy   %~ (insertAndTy  andTy  insCtx)
+insertTy (Ty_And  andTy ) key tyNode =
+  tyNode & node_AndTy   %~ (insertAndTy  andTy  key)
 
-insertTy (Ty_Or   orTy  ) insCtx tyNode =
-  tyNode & node_OrTy    %~ (insertOrTy   orTy   insCtx)
+insertTy (Ty_Or   orTy  ) key tyNode =
+  tyNode & node_OrTy    %~ (insertOrTy   orTy   key)
 
-insertTy (Ty_Text textTy) insCtx tyNode =
-  tyNode & node_TextTy  %~ (insertTextTy textTy insCtx)
+insertTy (Ty_Text textTy) key tyNode =
+  tyNode & node_TextTy  %~ (insertTextTy textTy key)
 
-insertTy (Ty_Num  numTy ) insCtx tyNode =
-  tyNode & node_NumTy   %~ (insertNumTy  numTy  insCtx)
+insertTy (Ty_Num  numTy ) key tyNode =
+  tyNode & node_NumTy   %~ (insertNumTy  numTy  key)
 
 
 
 
 insertSetTy ∷ SetTy → InsContext → Node_SetTy → Node_SetTy
 
-insertSetTy (WithElem    ty  ) insCtx setTyNode =
-  setTyNode & withElemTy %~ insertTy ty insCtx
+insertSetTy (WithElem    ty  ) key setTyNode =
+  setTyNode & withElemTy %~ insertTy ty key
 
 insertSetTy (SetOfSize size) key setTyNode =
   let updateSizeNode = HMS.insertWith Set.union size (Set.singleton key)
@@ -260,8 +271,8 @@ insertSetTy AnySet               key setTyNode =
 
 
 
-insertArrTy ∷ ArrayTy → MatchKey → Node_Ty → NodeUpdate
-insertArrTy (WithIndex num ty) insCtx arrTyNode =
+insertArrTy ∷ ArrayTy → MatchKey → Node_Ty → Node_ArrTy
+insertArrTy (WithIndex num ty) key arrTyNode =
   case asInt num of
     Just idx → arrTyNode & withIdxTy %~ 
                   HMS.insertWith 
@@ -270,7 +281,7 @@ insertArrTy (WithIndex num ty) insCtx arrTyNode =
                     (insertTy ty key newTypeNode)
     Nothing  → arrTyNode
 
-insertArrTy (ArrOfSize size  ) insCtx arrTyNode =
+insertArrTy (ArrOfSize size  ) key arrTyNode =
   let updateSizeNode = HMS.insertWith Set.union size (Set.singleton key)
   in  if size < 0 then arrTyNode
                   else arrTyNode & arrOfSizeTy %~ updateSizeNode
@@ -280,18 +291,25 @@ insertArrTy AnyArray           key arrTyNode =
 
 
 
-
--- | An OR type contains many types which can each be treated
--- as the type of the expression. So we insert the same key
--- for each type in the OR type list
+-- | An Or type is an untagged union of types, so it may
+-- be indexed simply by inserting each type of the union
+-- into the node using the same key.
+-- When a lookup returns that key, then THERE EXISTS some type
+-- in the union type that matches the given value.
 insertOrTy ∷ OrTy → Matchkey → Node_Ty → NodeUpdate
-insertOrTy (OrTy tyList) insCtx tyNode =
-  let insOrTy node ty = insertTy ty insCtx node
+insertOrTy (OrTy tyList) key tyNode =
+  let insOrTy node ty = insertTy ty key node
   in  L.foldl' insOrTy tyNode tyList
 
 
 
 
+-- | An And type is an intersection type. Unlike Or types, we
+-- must track each member type separately, to ensure that a
+-- given lookup value matches FOR ALL types in the And type set.
+-- Creates a NEW key for each type and inserts that key into the
+-- node. Does so repeatedly until a non-And type is found. Marks
+-- the initial key as final.
 insertAndTy ∷ AndTy → MatchKey → Node_Ty → NodeUpdate
 insertAndTy (AndTy tyList) key tyNode =
 
@@ -318,7 +336,6 @@ insertAndTy (AndTy tyList) key tyNode =
 -- assign key to each type in list
 -- adjust counter
 -- put in map and total
-
 
 
 
@@ -486,4 +503,8 @@ lookupNumTy num numTyNode =
                                      rangeKeys, evenKeys, oddKeys,
                                      intKeys, nonNegKeys, anyNumKeys ]
   
+
+
+
+lookupAndTy ∷ KeySet → Node_AndTy → KeySet
 
