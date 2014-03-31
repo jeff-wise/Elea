@@ -40,16 +40,7 @@ type MatchKey = Int
 type KeySet = Set.Set MatchKey
 
 
--- | Type of 'MatchKey'
-data KeyType =
-    -- | The key represents an inserted type
-    KeyFinal        
-    -- | The key is part of an intersection type
-  | KeyRef MatchKey
-
--- | Ensure that all keys are unique
-type KeyCounter = Int
-
+type NodeUpdate = State KeyCounter Node_Ty
 
 
 -- | Type Index
@@ -59,6 +50,7 @@ data TypeIndex = TypeIndex
   , _tyMap        ∷ HMS.HashMap MatchKey Type
   , _tyKeyCounter ∷ Int
   }
+
 
 
 -- | Type Node
@@ -95,19 +87,24 @@ data TypeIndex = TypeIndex
 --  The derived key may be final or hypothetical.
 --
 data Node_Ty = Node_Ty
-  { _node_RecTy   ∷  Node_RecTy
-  , _node_ArrTy   ∷  Node_ArrTy
-  , _node_SetTy   ∷  Node_SetTy
-  , _node_TextTy  ∷  Node_TextTy
-  , _node_NumTy   ∷  Node_NumTy
-  , _keyMap       ∷  HMS.HashMap MatchKey KeyType
+  { _node_RecTy   ∷ Node_RecTy
+  , _node_ArrTy   ∷ Node_ArrTy
+  , _node_SetTy   ∷ Node_SetTy
+  , _node_TextTy  ∷ Node_TextTy
+  , _node_NumTy   ∷ Node_NumTy
+  , _keyDB        ∷ KeyDB
   }
 
+
+data KeyDB = KeyDB 
+  { _preMap     ∷ HMS.HashMap MatchKey MatchKey
+  , _preCntMap  ∷ HMS.HashMap MatchKey Int
+  }
 
 
 data Node_RecTy = Node_RecTy
   { _hasEntryTy   ∷ HMS.HashMap T.Text Node_Ty
-  , _recOfSizeTy ∷ HMS.HashMap Int KeySet
+  , _recOfSizeTy  ∷ HMS.HashMap Int KeySet
   , _anyDictTy    ∷ KeySet
   }
 
@@ -120,9 +117,9 @@ data Node_ArrTy = Node_ArrTy
 
 
 data Node_SetTy = Node_SetTy
-  { _withElemTy     ∷  Node_Ty
-  , _setOfSizeTy  ∷  HMS.HashMap Int KeySet
-  , _anySetTy       ∷  KeySet
+  { _withElemTy   ∷ Node_Ty
+  , _setOfSizeTy  ∷ HMS.HashMap Int KeySet
+  , _anySetTy     ∷ KeySet
   }
 
 
@@ -192,9 +189,6 @@ newTypeNode = Node_Ty
                       , _arrOfSizeTy  = HMS.empty
                       , _anyArrTy     = Set.empty
                       }
-  , _node_AndTy   = Node_AndTy
-                      { _withIdxTy    = HMS.empty
-                      , _arrOfSizeTy  = HMS.empty
   , _node_TextTy  = Node_TextTy
                       { _withTextLenTy = HMS.empty
                       , _isTextTy      = HMS.empty
@@ -211,6 +205,7 @@ newTypeNode = Node_Ty
                       , _nonNegTy = Set.empty
                       , _anyNumTy = Set.empty
                       }
+  , _keyMap       = HMS.empty
   }
 
 
@@ -229,64 +224,62 @@ insert ty (TypeIndex tyNode tyMap tyKeyCounter) =
 
 
 
-insertTy ∷ Type → MatchKey → Node_Ty → Node_Ty
+insertTy ∷ Type → MatchKey → Node_Ty → NodeUpdate
 
-insertTy (Ty_Dict dictTy) key tyNode =
-  tyNode & node_DictTy  %~ (insertDictTy dictTy key)
+insertTy (Ty_Rec recTy) key tyNode = return $
+  tyNode & node_RecTy   %~ (insertRecTy recTy key)
 
-insertTy (Ty_Arr  arrTy ) key tyNode =
+insertTy (Ty_Arr  arrTy ) key tyNode = return $
   tyNode & node_ArrTy   %~ (insertArrTy  arrTy  key)
 
-insertTy (Ty_Set  setTy ) key tyNode =
+insertTy (Ty_Set  setTy ) key tyNode = return $ 
   tyNode & node_SetTy   %~ (insertSetTy  setTy  key)
 
-insertTy (Ty_And  andTy ) key tyNode =
+insertTy (Ty_And  andTy ) key tyNode = return $
   tyNode & node_AndTy   %~ (insertAndTy  andTy  key)
 
-insertTy (Ty_Or   orTy  ) key tyNode =
+insertTy (Ty_Or   orTy  ) key tyNode = return $
   tyNode & node_OrTy    %~ (insertOrTy   orTy   key)
 
-insertTy (Ty_Text textTy) key tyNode =
+insertTy (Ty_Text textTy) key tyNode = return $
   tyNode & node_TextTy  %~ (insertTextTy textTy key)
 
-insertTy (Ty_Num  numTy ) key tyNode =
+insertTy (Ty_Num  numTy ) key tyNode = return $
   tyNode & node_NumTy   %~ (insertNumTy  numTy  key)
 
 
 
 
-insertSetTy ∷ SetTy → InsContext → Node_SetTy → Node_SetTy
+insertSetTy ∷ SetTy → MatchKey → Node_SetTy → NodeUpdate
 
-insertSetTy (WithElem    ty  ) key setTyNode =
+insertSetTy (WithElem    ty  ) key setTyNode = return $
   setTyNode & withElemTy %~ insertTy ty key
 
-insertSetTy (SetOfSize size) key setTyNode =
+insertSetTy (SetOfSize size) key setTyNode = return $
   let updateSizeNode = HMS.insertWith Set.union size (Set.singleton key)
   in  if size < 0 then setTyNode
                   else setTyNode & setWithSizeTy %~ updateSizeNode
 
-insertSetTy AnySet               key setTyNode =
+insertSetTy AnySet               key setTyNode = return $
   setTyNode & anySetTy %~ (Set.insert key)
 
 
 
 
-insertArrTy ∷ ArrayTy → MatchKey → Node_Ty → Node_ArrTy
-insertArrTy (WithIndex num ty) key arrTyNode =
-  case asInt num of
-    Just idx → arrTyNode & withIdxTy %~ 
-                  HMS.insertWith 
-                    (\_ node → insertTy ty key node)
-                    idx
-                    (insertTy ty key newTypeNode)
-    Nothing  → arrTyNode
+insertArrTy ∷ ArrayTy → MatchKey → Node_Ty → NodeUpdate
+insertArrTy (WithIndex idx ty) key arrTyNode = return $
+  arrTyNode & withIdxTy %~ 
+    HMS.insertWith 
+      (\_ node → insertTy ty key node)
+      idx
+      (insertTy ty key newTypeNode)
 
-insertArrTy (ArrOfSize size  ) key arrTyNode =
+insertArrTy (ArrOfSize size  ) key arrTyNode = return $
   let updateSizeNode = HMS.insertWith Set.union size (Set.singleton key)
   in  if size < 0 then arrTyNode
                   else arrTyNode & arrOfSizeTy %~ updateSizeNode
 
-insertArrTy AnyArray           key arrTyNode =
+insertArrTy AnyArray           key arrTyNode = return $
   arrTyNode & anyArrTy %~ (Set.insert key)
 
 
@@ -294,6 +287,7 @@ insertArrTy AnyArray           key arrTyNode =
 -- | An Or type is an untagged union of types, so it may
 -- be indexed simply by inserting each type of the union
 -- into the node using the same key.
+--
 -- When a lookup returns that key, then THERE EXISTS some type
 -- in the union type that matches the given value.
 insertOrTy ∷ OrTy → Matchkey → Node_Ty → NodeUpdate
@@ -305,54 +299,36 @@ insertOrTy (OrTy tyList) key tyNode =
 
 
 -- | An And type is an intersection type. Unlike Or types, we
--- must track each member type separately, to ensure that a
--- given lookup value matches FOR ALL types in the And type set.
--- Creates a NEW key for each type and inserts that key into the
--- node. Does so repeatedly until a non-And type is found. Marks
--- the initial key as final.
+-- must track each member type separately, to ensure that a given
+-- lookup value matches FOR ALL types in the type set.
+--
+-- This algorithm creates a new key for each type and inserts
+-- that key into the node. The new key is indicated as a premise
+-- key (in the Premise Key Map), since it will be used as proof
+-- to imply the validity of the input key.
 insertAndTy ∷ AndTy → MatchKey → Node_Ty → NodeUpdate
-insertAndTy (AndTy tyList) key tyNode =
-
-  let -- Adds key of some type as child of the AND Type
-      updateKeyMap newKey node = 
-          node & _node_AndTy %~
-            (over andKeyMap (HMS.insert newKey $ KeyRef key))
-      
-      --  Get key for type, add to node, and record key
-      addAndTy node ty = do
-        newKey ← get 
-        modify (+1)
-        return $ updateKeyMap newKey node 
-        insertTy ty newKey node
-    
-      -- Mark input key as final state
-      -- Record size of AND Type
-      updateKeyTotal =  
-  
-  in  F.foldrM addAndTy tyNode tyList
-    >>= (
-
-  return $ tyNode & _node_AndTy ~ andNode'
--- assign key to each type in list
--- adjust counter
--- put in map and total
+insertAndTy (AndTy tyList) inputKey tyNode = do
+  -- Insert each type
+  foldrM insertAndTy' tyNode tyList
+  -- Store number of premises for input key
+  return $ tyNode & keyDB.keyPreCountMap %
+            (HMS.insert inputKey $ L.length tyList)
+  where
+    -- Insert a type with a new key, add new key
+    -- as premise to final key
+    insertAndTy' ∷ Type → Node_Ty → NodeUpdate
+    insertAndTy' ty currTyNode = do
+      newKey ← get 
+      modify (+1)
+      return $ currTyNode & keyDB.keyPreMap %~
+                (HMS.insert newKey inputKey)
+      insertTy ty newKey currTyNode
+                  
 
 
 
-data Node_AndTy = Node_AndTy
-  { _childCountMap ∷ HMS.HashMap MatchKey Int
-  , _nodeMap       ∷ HMS.HashMap MatchKey KeyType
-  }
-
--- Tree. Is current key node or final state
-data AndKey = KeyFinal | KeyRef MatchKey
-
-
-
-
-
-insertTextTy ∷ TextTy → MatchKey → Node_TextTy → Node_TextTy
-insertTextTy (WithTextLen num ) key textTyNode =
+insertTextTy ∷ TextTy → MatchKey → Node_TextTy → NodeUpdate
+insertTextTy (WithTextLen num ) key textTyNode = return $
   let len = case num of
               (Z i) → i
               (R d) → maybe (-1) id $ doubleToInt d
@@ -360,47 +336,45 @@ insertTextTy (WithTextLen num ) key textTyNode =
         then textTyNode
         else textTyNode & withTextLenTy %~ 
               HMS.insertWith Set.union len (Set.singleton key)
-insertTextTy (IsText      text) key textTyNode =
+insertTextTy (IsText      text) key textTyNode = return $
   textTyNode & isTextTy %~ 
     HMS.insertWith Set.union text (Set.singleton key)
-insertTextTy AnyText            key textTyNode =
+insertTextTy AnyText            key textTyNode = return $
   textTyNode & anyTextTy %~ (Set.insert key)
 
 
 
 
-insertNumTy ∷ NumberTy → MatchKey → Node_NumTy → Node_NumTy
-insertNumTy (IsNumber    num) key numTyNode =
+insertNumTy ∷ NumberTy → MatchKey → Node_NumTy → NodeUpdate
+insertNumTy (IsNumber    num) key numTyNode = return $
   numTyNode & isNumTy %~
     Map.insertWith Set.union num (Set.singleton key)
-insertNumTy (GreaterThan num) key numTyNode =
+insertNumTy (GreaterThan num) key numTyNode = return $
   numTyNode & gtNumTy %~
     Map.insertWith Set.union num (Set.singleton key)
-insertNumTy (LessThan    num) key numTyNode =
+insertNumTy (LessThan    num) key numTyNode = return $
   numTyNode & ltNumTy %~
     Map.insertWith Set.union num (Set.singleton key)
-insertNumTy (InRange lb ub  ) key numTyNode =
+insertNumTy (InRange lb ub  ) key numTyNode = return $
   let update (lbMap, ubMap) =
         ( Map.insertWith Set.union lb (Set.singleton key) lbMap
         , Map.insertWith Set.union ub (Set.singleton key) ubMap )
   in  numTyNode & rangeTy %~ update
-insertNumTy Even              key numTyNode =
+insertNumTy Even              key numTyNode = return $
   numTyNode & evenTy %~ (Set.insert key)
-insertNumTy Odd               key numTyNode =
+insertNumTy Odd               key numTyNode = return $
   numTyNode & oddTy %~ (Set.insert key)
-insertNumTy Integer           key numTyNode =
+insertNumTy Integer           key numTyNode = return $
   numTyNode & intTy %~ (Set.insert key)
-insertNumTy NonNegative       key numTyNode =
+insertNumTy NonNegative       key numTyNode = return $
   numTyNode & nonNegTy %~ (Set.insert key)
-insertNumTy AnyNumber         key numTyNode =
+insertNumTy AnyNumber         key numTyNode = return $
   numTyNode & anyNumTy %~ (Set.insert key)
 
 
 
 
----------------------------------------------------------------------
--- Lookup
----------------------------------------------------------------------
+--------------------------- LOOKUP -------------------------
 
 lookup ∷ Val → TypeIndex → [Type]
 lookup val (TypeIndex tyNode tyMap _) =
@@ -409,13 +383,34 @@ lookup val (TypeIndex tyNode tyMap _) =
 
 
 
+-- | Derive consequent types from found hypothetical types
 
 lookupTy ∷ Val → Node_Ty → KeySet
-lookupTy (Val_Set  set ) tyNode = lookupSetTy  set  (tyNode ^. node_SetTy )
-lookupTy (Val_Arr  arr ) tyNode = lookupArrTy  arr  (tyNode ^. node_ArrTy )
-lookupTy (Val_Text text) tyNode = lookupTextTy text (tyNode ^. node_TextTy)
-lookupTy (Val_Num  num ) tyNode = lookupNumTy  num  (tyNode ^. node_NumTy )
-lookupTy (Val_Sym  sym ) tyNode = lookupSymTy  sym  (tyNode ^. node_SymTy )
+lookupTy val tyNode =
+  let keySet = lookupTy' val tyNode
+  in  deriveKeys tyNode keySet  
+  where
+    lookupTy' =
+      case val of
+        (Val_Rec  rec ) → lookupRecTy  rec  (tyNode ^. node_RecTy )
+        (Val_Arr  arr ) → lookupArrTy  arr  (tyNode ^. node_ArrTy )
+        (Val_Set  set ) → lookupSetTy  set  (tyNode ^. node_SetTy )
+        (Val_Text text) → lookupTextTy text (tyNode ^. node_TextTy)
+        (Val_Num  num ) → lookupNumTy  num  (tyNode ^. node_NumTy )
+
+
+
+
+lookupRecTy ∷ Record → Node_RecTy → KeySet
+lookupRecTy (Rec rec) recTyNode =
+  let withElemsKeys = 
+        let lookupElemTy = flip lookupTy $ setTyNode ^. withElemTy
+            matches      = Set.fromList $ L.map lookupElemTy $ HS.toList set
+        in  Set.foldl' Set.union Set.empty matches
+      withSizeKeys  = maybe Set.empty id $
+        HMS.lookup (HS.size set) (setTyNode ^. setWithSizeTy)
+      anySetKeys    = setTyNode ^. anySetTy
+  in  withElemsKeys `Set.union` withSizeKeys `Set.union` anySetKeys
 
 
 
@@ -506,5 +501,65 @@ lookupNumTy num numTyNode =
 
 
 
-lookupAndTy ∷ KeySet → Node_AndTy → KeySet
+
+-------------------------- APPENDIX ------------------------
+------------------------------------------------------------
+
+
+------------------------- DERIVE KEYS ----------------------
+
+
+deriveKeys ∷ Node_Ty → KeySet → KeySet
+deriveKeys tyNode preKeys = deriveKeys' preKeys Set.empty
+  where
+    deriveKeys' ∷ KeySet → KeySet → KeySet
+    deriveKeys' premises found
+      | Set.null premises = found
+      | otherwise         =
+          let (newPremises, newFound) = step tyNode premises
+          in  deriveKeys' newPremises (found `Set.union` newFound)
+
+
+-- state monad
+-- moves btw premise sets, each time returns proved keys
+-- if keyset empty return
+-- step in forward chaining derivation
+step ∷ Node_Ty → KeySet → (KeySet, KeySet)
+step tyNode premiseKeys =
+  let (countMap, finalKeys) = Set.foldl'
+                                (evalKey tyNode)
+                                (Map.empty, Set.empty)
+                                premiseKeys
+      newPreKeys = HMS.foldl'
+                    (evalInfer tyNode^.keyDB.preCntMap)
+                    Set.empty
+                    countMap
+  in  (newPreKeys, finalKeys)
+      
+
+-- | Eval key inference
+-- If all premises not found, return unmodified keyset
+-- otherwise add new key.
+-- Works, becasue keys are unique in set.
+evalInfer ∷ HMS.HashMap MatchKey Int →
+               KeySet → (Key, Int) → KeySet
+evalInfer keyCountMap keySet (conKey, preFound) = 
+  let preNum = fromJust $ HMS.lookup key keyCountMap
+  in  if preNum == preFound
+        then Set.insert conKey keySet
+        else keySet
+
+
+-- | If a key is not in the premap then it was never a premise
+-- to anything, so it is a final form
+evalKey ∷ Node_Ty → (Map.Map Key Int, KeySet) → MatchKey
+          → (Map.Map Key Int, KeySet) 
+evalKey tyNode (keyCntMap, finalKeys) key = 
+  case HMS.lookup key $ tyNode^.keyDB.preMap of
+    Just consequentKey →
+      ( HMS.insertWith (+1) consequentKey 1 keyCntMap
+      , finalKeys
+      )
+    Nothing            → (keyCntMap, Set.insert key finalKeys) 
+
 

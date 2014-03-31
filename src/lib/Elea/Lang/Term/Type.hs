@@ -20,12 +20,12 @@ import GHC.Generics (Generic)
 
 
 
----------------------------------------------------------------------
--- 2.0 Types
----------------------------------------------------------------------
+
+------------------------- ELEA TYPES -----------------------
+
 
 data Type = 
-    Ty_Dict   DictTy
+    Ty_Rec    RecordTy
   | Ty_Set    SetTy
   | Ty_Arr    ArrayTy
   | Ty_And    AndTy
@@ -33,15 +33,16 @@ data Type =
   | Ty_Text   TextTy
   | Ty_Num    NumberTy
   | Ty_Dtm    DateTimeTy
-  | Ty_URI    URITy
-  | Ty_None 
-  | Ty_Any 
+  -- | The Top type, T <: Ty_Top
+  | Ty_Top 
+  -- | The Bottom type, Ty_Bot <: T
+  | Ty_Bot 
   deriving (Eq, Generic)
 
 
-data DictTy =
+data RecordTy =
     HasEntry T.Text Type
-  | DictOfSize Int
+  | RecOfSize Int
   | AnyDict
   deriving (Eq, Generic)
 
@@ -49,7 +50,6 @@ data DictTy =
 data ArrayTy = 
     WithIndex     Number Type 
   | ArrOfSize     Number Type 
-  | EachArrValue  Type
   | AnyArray
   deriving (Eq, Generic)
 
@@ -62,12 +62,13 @@ data SetTy =
 
 
 -- | Intersection Type
--- E.g., If x is *AndTy [T1, T2, T3]*, then x satifies
+-- Example: If x is *AndTy [T1, T2, T3]*, then x satifies
 -- property T1, T2, and T3.
 data AndTy = AndTy [Type]
   deriving (Eq, Generic)
 
 
+-- | Union Type
 data OrTy = OrTy [Type]
   deriving (Eq, Generic)
 
@@ -99,12 +100,8 @@ data DateTimeTy =
   deriving (Eq, Generic)
 
 
-data URITy = URITy
 
-
----------------------------------------------------------------------
--- 2.1 Hashable Types
----------------------------------------------------------------------
+-------------------------- HASHABLE ------------------------
 
 instance Hashable Type
 instance Hashable DictTy
@@ -119,9 +116,7 @@ instance Hashable DateTimeTy
 
 
 
----------------------------------------------------------------------
--- 2.2 Showable Types
----------------------------------------------------------------------
+---------------------------- SHOW --------------------------
 
 instance Show Type where
   show (Ty_Dict dictTy) = show dictTy
@@ -187,9 +182,7 @@ instance Show DateTimeTy where
 
 
 
----------------------------------------------------------------------
--- 2.3 Utility Functions
----------------------------------------------------------------------
+--------------------- UTILITY FUNCTIONS --------------------
 
 isDict ∷ Type
 isDict entries = 

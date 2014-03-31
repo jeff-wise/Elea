@@ -2,6 +2,9 @@
 
 Final list of TODOs
 
+
+refine elea.prelude
+
 IsSet Type ??
 Document clearly the indexing algorithms
 add a lot more comments to valindex.hs
