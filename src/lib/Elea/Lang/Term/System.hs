@@ -7,6 +7,8 @@ module Elea.Lang.Term.System where
 import Elea.Lang.Term.Transformer
 
 
+
+
 ------------------------ SYSTEM ---------------------------
 
 type BroadcastTrans = Signal → Value → STM [Reaction]
@@ -16,17 +18,20 @@ type AddParticleTrans = Particle → STM ()
 
 type TriggeredTrans = Value → STM [Signal]
 
+type QueryTrans = Type → STM [Particle]
 
-data System =
-  Sys
+
+data SystemI =
+  SysI
     BroadcastTrans
     AddParticleTrans
     TriggeredTrans
+    QueryTrans
+
 
 
 
 ---------------------- FORCE INTERFACE --------------------
-
 
 type SynthesizeTrans = Context → Synthesis → STM ()
 
@@ -37,7 +42,9 @@ type EncodeTrans = Context → Encoding → STM ()
 
 
 data ForceI =
-  ForceI SynthesizeTrans EncodeTrans
+  ForceI
+    SynthesizeTrans
+    EncodeTrans
 
 
 
@@ -47,8 +54,7 @@ data ForceI =
 
 -- | Runtime transactions
 type AppendActionTrans = Action → STM ()
-type FindSystemTrans
-type QueryTrans
+type FindSystemTrans = SystemId → STM System
 
 
 data RuntimeI =
@@ -66,15 +72,10 @@ data RuntimeException =
 
 
 
-
--- Action
------------------------------------------------------------
-
--- ***** Def Forms *****
-
-data Projection = Projection Lens SystemId
+--------------------------- FORCE -------------------------
 
 type ForceId = T.Text
+
 
 
 data Force =
@@ -86,13 +87,16 @@ data Synthesis = Syn Transformer [Projection]
 
 data Encoding = Enc SystemId RcptrId Cons_Type
 
+data Projection = Projection Lens SystemId
 
---------------------- ACTION POTENTIAL --------------------
 
+
+
+---------------------- ACTION POTENTIAL --------------------
 
 -- ***** Introductory Forms
 
-type ActnPotlId = T.Text
+type APId = T.Text
 type EventClass = Lens
 data EventInstance = Value
 
@@ -105,30 +109,20 @@ type ParamMap = HMS.HashMap Signal Value
 data ActionPotential = AP EventClass [Signal] [ForceId]
 
 
-data APState = Inhibited | Active
-
-
 
 -- ***** Evaluation Forms
 
 type SignalIndex = HMS.HashMap Signal [APId]
 
--- event occurs per AP
--- event is triggering of action
--- so signal goes to some action, but one action
---   could have many instances simultaneously occurring
---   so must map signal to event, using event class
--- rule: each signal can can only cause one reaction per AP
+
+data APState = Inhibited | Active
+
 type APTransMap = HMS.HasHMap ApId (APSTate, Trans_ActionPotential)
 
--- because STM works on vars, can define functions with
--- fixed structure. do not need state function
-
-
-type Event = HMS.HashMap Signal (Maybe Value)
 
 type EventMap = HMS.HashMap Value (TVar Event)
 
+type Event = HMS.HashMap Signal (Maybe Value)
 
 
 
@@ -159,7 +153,10 @@ newReceptorDB = RecpDB TI.newTypeIndex HMS.empty
 
 ------------------------ PARTICLE --------------------------
 
+-- ***** Evaluation Forms
+
 newtype Particle = Part Value
+
 
 data ParticleDB =
   PartDB
@@ -168,22 +165,18 @@ data ParticleDB =
 
 
 
-type SystemId = T.Text
 
+
+------------------------- RUNTIME --------------------------
+
+type SystemId = T.Text
 
 type Universe = HMS.HashMap SystemId (TVar System)
 
 type ActionQueue = TQueue Action
 
 
-
-
-
-
-data Program =
-  Program
-    (ForceId → Force)
-
+data Program = Program (ForceId → Force)
 
 
 data Context = Ctx System ParamMap
@@ -193,15 +186,6 @@ data Context = Ctx System ParamMap
 data Action = Action System Reaction
 
 
-
--- always write new trans
--- sometimes put in default vals
--- sometimes recv them
--- add typeclass?
-
-
--- interp vs compile
--- forceId resolution
 
 
 -- Crashes when force not present.
@@ -214,10 +198,10 @@ getForce forceHM forceId = fromJust $ HMS.lookup forceId forceHM
 
 
 
-
 handleError ∷ RuntimeException → STM a
 handleError SystemNotFound    = return ()
 handleError DuplicateParticle = return ()
+
 
 
 
@@ -226,10 +210,6 @@ handleError DuplicateParticle = return ()
 
 init ∷ IO ()
 init = do
-
-
-
-
 
 
 

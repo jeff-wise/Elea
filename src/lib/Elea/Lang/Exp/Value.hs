@@ -1,15 +1,20 @@
 
 
-module Elea.Lang.Term.Value
+module Elea.Lang.Exp.Value
   ( -- * Values
     Value (..)
+  , Record (..), Array (..), Set (..)
+  , Text (..), Number (..)
   ) where
  
 
 
 import Elea.Prelude
 
+import Data.Hashable
+import qualified Data.Foldable as F
 import qualified Data.HashSet as HS
+import qualified Data.HashMap.Strict as HMS
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 
@@ -22,17 +27,15 @@ import GHC.Generics (Generic)
 ---------------------------------------------------------------------
 
 data Value = 
-    Val_Set     Set
-  | Val_Dict    Dict
+    Val_Rec     Record
   | Val_Arr     Array
+  | Val_Set     Set
   | Val_Text    Text
   | Val_Num     Number
-  | Val_Dtm     DateTime
-  | Val_Type    Type        -- | Types are values
   deriving (Eq, Generic)
 
 
-data Record = Rec (HMS.HashMap Text Value)
+data Record = Rec (HMS.HashMap T.Text Value)
   deriving (Eq, Generic)
 
 
@@ -44,7 +47,8 @@ data Set = Set (HS.HashSet Value)
   deriving (Eq, Generic)
 
 
-data Text = Text T.Text
+newtype Text = Text
+  { primText  ∷ T.Text }
   deriving (Eq, Generic)
 
 
@@ -54,9 +58,10 @@ data Number =
   deriving (Generic)
 
 
+{- NOT IN USE
 data DateTime = DateTime Day TimeOfDay
   deriving (Eq, Generic)
-
+-}
 
 
 
@@ -64,13 +69,30 @@ data DateTime = DateTime Day TimeOfDay
 -- 2 Hashable Value
 ---------------------------------------------------------------------
 
+
+-- Make these collections Hashable --
+-------------------------------------
+
+instance Hashable a ⇒ Hashable (HS.HashSet a) where
+  hashWithSalt = hashUsing HS.toList  
+
+instance Hashable a ⇒ Hashable (Seq.Seq a) where
+  hashWithSalt = hashUsing F.toList  
+
+instance (Hashable a, Hashable b) ⇒ Hashable (HMS.HashMap a b) where
+  hashWithSalt = hashUsing HMS.toList  
+
+
+
+-- Use Generic instances ------------
+-------------------------------------
+
 instance Hashable Value
 instance Hashable Record
 instance Hashable Array
 instance Hashable Set
 instance Hashable Text
 instance Hashable Number
-instance Hashable DateTime
 
 
 
@@ -85,8 +107,6 @@ instance Show Value where
   show (Val_Set  set ) = show set
   show (Val_Text text) = show text
   show (Val_Num  num ) = show num
-  show (Val_Dtm  dtm ) = show dtm
-  show (Val_Type typ ) = show typ
 
 
 instance Show Record where
@@ -108,11 +128,6 @@ instance Show Text where
 instance Show Number where
   show (Z i) = show i
   show (R d) = show d
-
-
-instance Show DateTime where
-  show (DateTime date time) =
-    show date ++ " " ++ show time
 
 
 
@@ -173,26 +188,26 @@ instance Num Number where
 
 -- 5.1 Constructors
 ---------------------------------------------------------------------
+{-
+mkRec ∷ [(T.Text, Value)] → Value
+mkRec = Val_Rec . Rec . HMS.fromList
 
-dict ∷ [(T.Text, Val)] → Val
-dict entries = Val_Dict . Dict . HMS.fromList
-
-text ∷ T.Text → Val
+text ∷ T.Text → Value
 text = Val_Text . Text
 
-int ∷ Int → Val
-int = Val_Number . Z
+int ∷ Int → Value
+int = Val_Num . Z
 
-real ∷ Double → Val
-real = Val_Number . R
+real ∷ Double → Value
+real = Val_Num . R
 
-
+-}
 
 -- 5.2 Array Functions
 ---------------------------------------------------------------------
-
+{-
 -- | Return a value at an index in an 'Array'
-at ∷ Array → Int → Maybe Val
+at ∷ Array → Int → Maybe Value
 at (Arr arr) i 
   | i >= 0 =  if i < Seq.length arr
                 then Just $ Seq.index arr i
@@ -202,12 +217,14 @@ at (Arr arr) i
                 else Nothing
   | otherwise = Nothing
 
-
+-}
 
 -- 5.3 Number Functions
 ---------------------------------------------------------------------
 
 -- | Check if a 'Number' is an Integer, and if so, return it
+-- Rounding errors?
+{-
 asInt ∷ Number → Maybe Int
 asInt (Z i) = Just i
 asInt (R d) =
@@ -215,20 +232,18 @@ asInt (R d) =
   in  if d == (fromIntegral i)
         then Just i
         else Nothing
-
-
+-}
+{-
 numEven ∷ Number → Bool
-numEven (Z i) = even i
-numEven (R d) = maybe False even $ doubleToInt d
+numEven = maybe False even . asInt
    
 
 numOdd ∷ Number → Bool
-numOdd (Z i) = odd i
-numOdd (R d) = maybe False odd $ doubleToInt d
+numOdd = maybe False odd . asInt
 
 
 isInteger ∷ Number → Bool
 isInteger = maybe False (const True) . asInt 
 
 
-
+-}

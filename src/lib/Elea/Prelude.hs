@@ -52,11 +52,6 @@ module Elea.Prelude
     , Prelude.Char
     , Prelude.IO
     , Prelude.Either (..)
-      -- ** Containers
-    , HashMap
-    , HashSet
-    , Seq
-    , Hashable
       -- ** Numbers
     , Word, Word8, Word32, Word64
     , Prelude.Int
@@ -104,29 +99,10 @@ module Elea.Prelude
     , (Control.Monad.>=>)
      -- ** Strings
     , Prelude.String
-      -- ** Hashing
-    , hash, hashWithSalt
       -- ** Print
     , Prelude.print
       -- ** Command line args
-    , TimeOfDay, Day
-    , Pico
-    , (Control.Lens.Getter.^.)
-    , Control.Lens.Getter.view
-    , (Control.Lens.Setter..~)
-    , (Control.Lens.Setter.%~)
-    , Control.Lens.Setter.over
-    , (Control.Lens.Combinators.&)
-    , Control.Lens.TH.makeLenses
     , module Debug.Trace
-    , (<|), (|>), (><)
-    , viewl
-    , ViewL (..)
-    , (L.++)
-    , (>$>)
-    , module Control.Concurrent.STM
-    , module Control.Concurrent
-    , module Data.Traversable
     ) where
 
 import qualified Prelude
@@ -142,16 +118,10 @@ import Control.Category
 import qualified Control.Monad
 
 
-import Data.Foldable as F
-import Data.Traversable
-
-
 import Data.Word (Word8, Word32, Word64, Word)
 import Data.Int (Int32, Int64)
 
 
-import Control.Concurrent.STM
-import Control.Concurrent
 
 import qualified Data.Maybe
 import qualified Data.Either
@@ -159,70 +129,6 @@ import qualified Data.Ord
 import qualified Data.Function
 import qualified Data.Tuple
 import qualified Data.String
-
-
--- Hashing
-import Data.Hashable (Hashable, hash, hashWithSalt, hashUsing)
-
-
--- Lenses
-import qualified Control.Lens.Getter
-import qualified Control.Lens.Setter
-import qualified Control.Lens.Combinators
-import qualified Control.Lens.TH
-
-
--- Containers
-import Data.Sequence (Seq, (<|), (|>), viewl, ViewL (..), (><))
-import Data.HashMap.Strict (HashMap)
-import Data.HashSet  as Set (HashSet, toList)
-
-
--- Lists
-import Data.List.Stream as L
-
-
--- Time
-import Data.Time.Calendar (Day(..))
-import Data.Time.LocalTime (TimeOfDay(..))
-
--- For added instances/functions
-import Data.Fixed (Pico, Fixed, E12, showFixed)
-
-
-
-
--- added functionality
-instance Hashable a ⇒ Hashable (HashSet a) where
-  hashWithSalt = hashUsing Set.toList  
-
-
-instance Hashable a ⇒ Hashable (Seq a) where
-  hashWithSalt = hashUsing F.toList  
-
-
-instance Hashable TimeOfDay where
-  hashWithSalt s (TimeOfDay hours mins secs) =
-    s `hashWithSalt` hours 
-      `hashWithSalt` mins 
-      `hashWithSalt` secs
-
-
--- PICO, for Time of Day seconds
-instance Hashable (Fixed E12) where
-  hashWithSalt = hashUsing (showFixed Prelude.False)
-
-
-instance Hashable Day where
-  hashWithSalt = hashUsing toModifiedJulianDay
-
-
-
-
-(>$>) ∷ a → (a → b) → b
-(>$>) a f = f a
-
-infixr 0 >$>
 
 
 

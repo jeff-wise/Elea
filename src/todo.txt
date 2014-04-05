@@ -3,12 +3,11 @@
 Final list of TODOs
 
 
+coding conventions:
+ rules for folds
+
 refine elea.prelude
 
-IsSet Type ??
-Document clearly the indexing algorithms
-add a lot more comments to valindex.hs
-add a lot more comments to term types
 
 names of system terms, make consistent/obvious
 
@@ -23,29 +22,9 @@ plan out sample apps based on biggest problem areas
  e.g. relations, and concurrency
 
 
-review custom combinator usage
-
-notes:
-  abstract syntax should be safe/correct
-    but does not have to be succinct or super-elegant
-
-
-
--- Library is a language construct..
--- the only one which manipulates systems?
--- A way to store systems and automatically hosts them?
--- Repository, dep. management, etc..
-
-
-synthesis: use random numbers as index? adjaceny list representation
- need to define as tuples or just as a list?
-
-
-templates: explanation, design decisions, etc..
-          use int as params, gui can abstract over with tags if needed
-
-
 will have to catch haskell exceptions e.g. divide by zero
 
 
 should update index to check for dups?
+
+text, num -- "one of" type

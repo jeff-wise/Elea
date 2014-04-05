@@ -3,71 +3,73 @@
 module Elea.Lang.Term.Transformer where
 
 
+import Elea.Prelude
+
+import Elea.Lang.Term.Value
+
+
+import qualified Data.HashMap.Strict as HMS
+import qualified Data.HashSet as HS
+import qualified Data.Sequence as Seq
+import qualified Data.Text as T
+
+
+
+-----------------------------------------------------------
+--------------------- TRANSFORMER -------------------------
+-----------------------------------------------------------
+
 data Transformer =
-    Tr_Equation Equation
-  | Tr_TextProc TextProc
-  | Tr_Template Template
+    Tr_Template Template
+  | Tr_Equation Equation
+  | Tr_Query    Query
+
 
 
 
 ----------------------- TEMPLATE --------------------------
 
-data ValueTemplate a = 
-    Dec a
-  | Var T.Text
+data Template = Var T_Val
 
--- use network reference? if static?
 
-data  = 
-    T_Val_Dict    T_Dict
+data Var a = 
+    -- | Declaration
+    D a
+    -- | Binding (to a parameter in context)
+  | B T.Text
+
+
+data T_Val = 
+    T_Val_Rec     T_Record
   | T_Val_Arr     T_Array
   | T_Val_Set     T_Set
   | T_Val_Text    T_Text
   | T_Val_Num     T_Number
-  | T_Val_Dtm     T_DateTime
-  | T_Val_Type    T_Type
   | T_Val_Null
-  deriving (Generic)
 
 
 
-data T_Dict = T_Dict
-  (HMS.HashMap (Template T_Text) (Template T_Value))
-  deriving (Generic)
+data T_Record = T_Rec
+  (HMS.HashMap (Var T.Text) (Var T_Val))
 
 
-data T_Array = T_Arr (Seq.Seq (Template T_Value))
-  deriving (Generic)
+data T_Array = T_Arr (Seq.Seq (Var T_Val))
 
 
-data T_Set = T_Set (HS.HashSet (Template T_Value))
-  deriving (Generic)
+data T_Set = T_Set (HS.HashSet (Var T_Val))
 
 
-data T_Text = T_Text T.Text
-  deriving (Generic)
+newtype T_Text = T_Text T.Text
 
 
 data T_Number = 
     T_Z Int 
   | T_R Double
-  deriving (Generic)
-
-
-data T_DateTime = T_DateTime Day TimeOfDay
-  deriving (Generic)
-
 
 
 
 
 ----------------------- EQUATION --------------------------
-
--- for now
--- use GADT
--- allow imaginary nums?
--- eventually allow full math equations?
--- keep simple for now
 
 data Equation =
     Num Number 
@@ -82,7 +84,9 @@ data Equation =
 
 
 
------------------------ TEXTPROC --------------------------
+------------------------- QUERY ----------------------------
+
+data Query = Query SystemId Type
 
 
 

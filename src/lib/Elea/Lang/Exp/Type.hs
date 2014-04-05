@@ -1,19 +1,21 @@
 
 
-module Elea.Lang.Term.Type
+module Elea.Lang.Exp.Type
   ( -- * Types
-  , Type (..)
-  , RecTy (..), ArrayTy (..), SetTy (..)
-  , AndTy (..), OrTy (..)
-  , TextTy (..), NumberTy (..), DateTimeTy (..)
+    Type (..)
+  , RecordType (..), ArrayType (..), SetType (..)
+  , AndType (..), OrType (..)
+  , TextType (..), NumberType (..)
   ) where
  
 
 
 import Elea.Prelude
 
-import qualified Data.HashSet as HS
-import qualified Data.Sequence as Seq
+import Elea.Lang.Exp.Value
+
+
+import Data.Hashable
 import qualified Data.Text as T
 
 import GHC.Generics (Generic)
@@ -25,14 +27,13 @@ import GHC.Generics (Generic)
 
 
 data Type = 
-    Ty_Rec    RecordTy
-  | Ty_Set    SetTy
-  | Ty_Arr    ArrayTy
-  | Ty_And    AndTy
-  | Ty_Or     OrTy
-  | Ty_Text   TextTy
-  | Ty_Num    NumberTy
-  | Ty_Dtm    DateTimeTy
+    Ty_Rec    RecordType
+  | Ty_Set    SetType
+  | Ty_Arr    ArrayType
+  | Ty_And    AndType
+  | Ty_Or     OrType
+  | Ty_Text   TextType
+  | Ty_Num    NumberType
   -- | The Top type, T <: Ty_Top
   | Ty_Top 
   -- | The Bottom type, Ty_Bot <: T
@@ -40,23 +41,24 @@ data Type =
   deriving (Eq, Generic)
 
 
-data RecordTy =
-    HasEntry T.Text Type
+data RecordType =
+    HasEntry  T.Text Type
   | RecOfSize Int
-  | AnyDict
+  | AnyRecord
   deriving (Eq, Generic)
 
 
-data ArrayTy = 
-    WithIndex     Number Type 
-  | ArrOfSize     Number Type 
+data ArrayType = 
+    -- | For now, indices must be >=0
+    WithIndex Int Type 
+  | ArrOfSize Int
   | AnyArray
   deriving (Eq, Generic)
 
 
-data SetTy = 
-    WithElem      Type
-  | SetOfSize   Number
+data SetType = 
+    WithElem    Type
+  | SetOfSize   Int
   | AnySet
   deriving (Eq, Generic)
 
@@ -64,70 +66,65 @@ data SetTy =
 -- | Intersection Type
 -- Example: If x is *AndTy [T1, T2, T3]*, then x satifies
 -- property T1, T2, and T3.
-data AndTy = AndTy [Type]
+data AndType = AndType [Type]
   deriving (Eq, Generic)
 
 
 -- | Union Type
-data OrTy = OrTy [Type]
+data OrType = OrType [Type]
   deriving (Eq, Generic)
 
 
-data TextTy = 
+data TextType = 
     WithTextLen  Int
-  | IsText       T.Text
-  | OneOfText    (HS.HashSet T.Text)
+  | IsText       Text
   | AnyText
   deriving (Eq, Generic)
 
 
-data NumberTy = 
+data NumberType = 
     IsNumber      Number
   | GreaterThan   Number
   | LessThan      Number
   | InRange       Number Number  -- | Inclusive
-  | Even
-  | Odd
+  -- | This currently only describes numbers which have a 
+  -- 'Z' representation, e.g. '3.0' is not an integer
   | Integer
   | NonNegative
   | AnyNumber
   deriving (Eq, Generic)
 
 
-data DateTimeTy = 
-    IsDateTime DateTime
-  | AnyDateTime
-  deriving (Eq, Generic)
-
 
 
 -------------------------- HASHABLE ------------------------
 
 instance Hashable Type
-instance Hashable DictTy
-instance Hashable ArrayTy
-instance Hashable SetTy
-instance Hashable OrTy
-instance Hashable AndTy
-instance Hashable TextTy
-instance Hashable NumberTy
-instance Hashable DateTimeTy
+instance Hashable RecordType
+instance Hashable ArrayType
+instance Hashable SetType
+instance Hashable OrType
+instance Hashable AndType
+instance Hashable TextType
+instance Hashable NumberType
 
 
 
 
 ---------------------------- SHOW --------------------------
-
+{-
 instance Show Type where
-  show (Ty_Dict dictTy) = show dictTy
+  show (Ty_Rec  recTy)  = show recTy
   show (Ty_Set  setTy ) = show setTy
   show (Ty_Arr  arrTy ) = show arrTy
   show (Ty_And  andTy ) = show andTy
   show (Ty_Or   orTy  ) = show orTy
   show (Ty_Text textTy) = show textTy
   show (Ty_Num  numTy ) = show numTy
-  show (Ty_Dtm  dtmTy ) = show dtmTy
-  show  Ty_Any          = "Any"
+
+
+instance Show RecordTy where
+  show = ""
 
 
 instance Show ArrayTy where
@@ -174,25 +171,5 @@ instance Show NumberTy where
   show NonNegative       = "NonNegative"
   show AnyNumber         = "Number"
 
-
-instance Show DateTimeTy where
-  show (IsDateTime dtm) = "Is " ++ show dtm
-  show AnyDateTime      = "DateTime"
-
-
-
-
---------------------- UTILITY FUNCTIONS --------------------
-
-isDict ∷ Type
-isDict entries = 
-  let entryTys = L.map (\(key, ty) → HasEntry key ty) entries
-      sizeTy = DictOfSize (L.length entries)
-  in  AndTy (sizeTy : entryTys)
-
-
-isText ∷ Type
-isText = Ty_Text . IsText
-
-
+-}
 

@@ -1,6 +1,6 @@
 
 
-module Elea.Lang.Index.Value (
+module Elea.Lang.Sem.ValueIndex (
     ValueIndex    
   , newValueIndex
   , lookup, insert
@@ -8,7 +8,8 @@ module Elea.Lang.Index.Value (
 
 
 import Elea.Prelude
-import Elea.Lang.Term.Basic
+
+import Elea.Lang.Term.Value
 
 
 import qualified Data.Foldable as F
@@ -23,24 +24,24 @@ import qualified Data.Text as T
 
 
 
----------------------------------------------------------------------
--- 1.0 Types
----------------------------------------------------------------------
+-------------------------- TYPES --------------------------
 
----------------------------------------------------------------------
--- 1.1 Match Keys
----------------------------------------------------------------------
 
+-- | A key which identifies a particular type.
+-- If a value matches a type at some type node, then
+-- that type node should return the corresponding key.
 type MatchKey = Int
+
+
+-- | A set of keys
+-- A keyset at a terminating node indicates that
+-- its path intersects multiple types
 type KeySet = Set.Set MatchKey
 
 
 
 
----------------------------------------------------------------------
--- 1.2 Value Index
----------------------------------------------------------------------
---
+-- | Value Index
 data ValueIndex = ValueIndex
   { _valNode        ∷ Node_Value
   , _valMap         ∷ HMS.HashMap MatchKey Value
@@ -49,12 +50,30 @@ data ValueIndex = ValueIndex
 
 
 
----------------------------------------------------------------------
--- 1.3 Index Nodes
----------------------------------------------------------------------
+-- | Value Node
+-- Merges all values into one data structure.
+-- The match keys identify the nodes of some embedded
+-- tree. 
+--
+-- Example: Stored values of A, B, C, and D
+--
+--                    [A-B-C-D]
+--                  /     |      \
+--               [A-B]    C     [A-B-C-D]*
+--              /                  \
+--           [A-B]                [B-C]
+--
+--  * In order to examine values A and B, an algorithm needs
+--    to only traverse those left and right paths once.
+--  * If the values of A, B, C, and D at the starred node are
+--    all of the same type, then they can be stored in an optimal
+--    data structure. If one wanted to find which of A, B, C, or D
+--    at that node was equal to 5, the lookup could be performed
+--    on an ordered map (binary tree) very quickly, as opposed
+--    to linearly by examine the node at each tree separately.
 --
 data Node_Value = Node_Value
-  { _node_Dict  ∷  Node_Dict
+  { _node_Rec   ∷  Node_Rec
   , _node_Arr   ∷  Node_Arr
   , _node_Set   ∷  Node_Set
   , _node_Text  ∷  Node_Text
@@ -62,9 +81,9 @@ data Node_Value = Node_Value
   }
 
 
-data Node_Dict = Node_Dict
-  { _dictNodeHM   ∷ HMS.HashMap T.Text Node_Value
-  , _dictSizeMap  ∷ HMS.HashMap MatchKey Int
+data Node_Rec = Node_Rec
+  { _recNodeHM   ∷ HMS.HashMap T.Text Node_Value
+  , _recSizeMap  ∷ HMS.HashMap MatchKey Int
   } 
 
 
@@ -89,10 +108,13 @@ data Node_Text = Node_Text
 
 
 
+-- Lenses for Value Node
+makeLenses ''Node_Value
 
----------------------------------------------------------------------
--- 1.4 Showable Index
----------------------------------------------------------------------
+
+
+
+--------------------------- SHOW ---------------------------
 
 instance Show ValueIndex where
   show (ValueIndex valNode valItemMap valKeyCounter) =
@@ -137,7 +159,6 @@ instance Show Node_Text where
 -- 1.5 Lenses
 ---------------------------------------------------------------------
 
-makeLenses ''Node_Value
 
 
 
