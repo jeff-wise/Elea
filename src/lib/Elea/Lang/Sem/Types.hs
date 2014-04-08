@@ -16,11 +16,8 @@ import Elea.Lang.Term.Transformer
 type SignalIndex = HMS.HashMap Signal [APId]
 
 
--- | An action potential may choose whether to accept signals.
--- An Inhibited AP loses all current events and ignores all
--- incoming signals.
-data APState = Inhibited | Active
 
+type APTransMap = HMS.HasHMap ApId (APSTate, Trans_ActionPotential)
 
 -- | Store 
 type APMap = HMS.HasHMap APId (APState, SendTrans)

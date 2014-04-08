@@ -1,6 +1,6 @@
 
 
-module Elea.Lang.Index.Type (
+module Elea.Lang.Sem.TypeIndex (
     TypeIndex
   , newTypeIndex
   , insert, lookup
@@ -9,8 +9,8 @@ module Elea.Lang.Index.Type (
 
 import Elea.Prelude
 
-import Elea.Lang.Exp.Type
-import Elea.Lang.Exp.Value
+import Elea.Lang.Term.Type
+import Elea.Lang.Term.Value
 
 
 import Control.Monad.State.Lazy --(State, runState, get, modify)
@@ -19,6 +19,7 @@ import Control.Monad.State.Lazy --(State, runState, get, modify)
 import qualified Data.Foldable as F
 import Data.Hashable
 import qualified Data.HashMap.Strict as HMS
+import qualified Data.HashSet as HS
 import qualified Data.List.Stream as L
 import qualified Data.Map as Map
 import Data.Maybe (fromJust)
@@ -55,9 +56,9 @@ type NodeUpdate a = State KeyCounter a
 
 -- | Type Index
 data TypeIndex = TypeIndex
-  { _tyNode       ∷ Node_Type
-  , _tyMap        ∷ HMS.HashMap TypeKey Type
-  , _tyKeyCounter ∷ KeyCounter
+  { indexTypeNode   ∷ Node_Type
+  , indexTypeMap    ∷ HMS.HashMap TypeKey Type
+  , indexKeyCounter ∷ KeyCounter
   }
 
 
@@ -80,6 +81,7 @@ data Node_Type =
   , arrayTypeNode   ∷  Node_ArrayType
   , textTypeNode    ∷  Node_TextType
   , numberTypeNode  ∷  Node_NumberType
+  , anyTypeNode     ∷  KeySet
   , premiseMap      ∷  PremiseMap
   }
 
@@ -99,7 +101,7 @@ data Node_RecordType =
 -- | Array Type Node
 data Node_ArrayType =
   Node_ArrayType
-  { withIndexTypeIndex  ∷  HMS.HashMap Int Node_Type 
+  { withElemTypeIndex   ∷  HMS.HashMap Int Node_Type 
   , arrOfSizeTypeIndex  ∷  HMS.HashMap Int KeySet 
   , anyArrayTypeIndex   ∷  KeySet
   }
@@ -124,8 +126,6 @@ data Node_NumberType =
   , lessThanTypeIndex     ∷  Map.Map Number KeySet
   , rangeTypeIndex        ∷  ( Map.Map Number KeySet
                               , Map.Map Number KeySet)
-  , integerTypeIndex      ∷  KeySet
-  , nonNegativeTypeIndex  ∷  KeySet
   , anyNumberTypeIndex    ∷  KeySet
   }
 
@@ -136,11 +136,10 @@ data Node_NumberType =
 data PremiseMap =
   PremiseMap 
     -- | Maps premise keys to conclusion keys
-  { inferenceMap    ∷ HMS.HashMap TypeKey TypeKey
+    (HMS.HashMap TypeKey TypeKey)
     -- | Indicates number of premise keys required for
     -- some conclusion key.
-  , premiseCountMap ∷ HMS.HashMap TypeKey Int
-  }
+    (HMS.HashMap TypeKey Int)
 
 
 
@@ -150,9 +149,9 @@ data PremiseMap =
 -- | Create a new Type Index
 newTypeIndex ∷ TypeIndex
 newTypeIndex = TypeIndex
-  { _tyNode       = newTypeNode
-  , _tyMap        = HMS.empty
-  , _tyKeyCounter = 0
+  { indexTypeNode   = newTypeNode
+  , indexTypeMap    = HMS.empty
+  , indexKeyCounter = 0
   }
 
 
@@ -166,7 +165,7 @@ newTypeNode =
                       , anyRecordTypeIndex    = Set.empty
                       }
   , arrayTypeNode   = Node_ArrayType
-                      { withIndexTypeIndex    = HMS.empty
+                      { withElemTypeIndex    = HMS.empty
                       , arrOfSizeTypeIndex    = HMS.empty
                       , anyArrayTypeIndex     = Set.empty
                       }
@@ -180,10 +179,9 @@ newTypeNode =
                       , greaterThanTypeIndex  = Map.empty
                       , lessThanTypeIndex     = Map.empty
                       , rangeTypeIndex        = (Map.empty, Map.empty)
-                      , integerTypeIndex      = Set.empty
-                      , nonNegativeTypeIndex  = Set.empty
                       , anyNumberTypeIndex    = Set.empty
                       }
+  , anyTypeNode     = Set.empty
   , premiseMap      = PremiseMap HMS.empty HMS.empty
   }
 
@@ -196,11 +194,11 @@ newTypeNode =
 -- Currently, this function does not check for duplicate types.
 insert ∷ Type → TypeIndex → TypeIndex
 insert ty (TypeIndex tyNode tyMap currKey) =
-  let (tyNode', nextKey) = runState (insertType ty tyNode) currKey
+  let (tyNode', lastKeyUsed) = runState (insertType ty tyNode) currKey
   in  TypeIndex {
-        _tyNode       = tyNode'
-      , _tyMap        = HMS.insert currKey ty tyMap
-      , _tyKeyCounter = nextKey
+        indexTypeNode   = tyNode'
+      , indexTypeMap    = HMS.insert currKey ty tyMap
+      , indexKeyCounter = lastKeyUsed + 1
       }
 
 
@@ -209,33 +207,38 @@ insert ty (TypeIndex tyNode tyMap currKey) =
 -- | Insert a type into the correct node
 insertType ∷ Type → Node_Type → NodeUpdate Node_Type
 insertType ty tyNode@(Node_Type
-                    currRecordTypeNode
-                    currArrayTypeNode
-                    currTextTypeNode
-                    currNumberTypeNode
-                    _         ) = 
+                      currRecordTypeNode
+                      currArrayTypeNode
+                      currTextTypeNode
+                      currNumberTypeNode
+                      currAnyTypeNode
+                      _         ) = 
 
   case ty of
 
-    Ty_Rec  recTy   → do
+    Ty_Rec  recTy → do
       newRecordTypeNode ← insertRecordType recTy currRecordTypeNode
       return $ tyNode { recordTypeNode = newRecordTypeNode }
 
-    Ty_Arr  arrTy   → do
+    Ty_Arr  arrTy → do
       newArrayTypeNode ← insertArrayType arrTy currArrayTypeNode
       return $ tyNode { arrayTypeNode = newArrayTypeNode }
 
-    Ty_And  andTy   → insertAndType andTy tyNode
+    Ty_And  andTy → insertAndType andTy tyNode
 
-    Ty_Or   orTy    → insertOrType orTy tyNode
+    Ty_Or   orTy  → insertOrType orTy tyNode
 
-    Ty_Text textTy  → do
-      newTextTypeNode ← insertTextType textTy currTextTypeNode
+    Ty_Txt  txtTy → do
+      newTextTypeNode ← insertTextType txtTy currTextTypeNode
       return $ tyNode { textTypeNode = newTextTypeNode }
 
-    Ty_Num  numTy   → do
+    Ty_Num  numTy → do
       newNumberTypeNode ← insertNumberType numTy currNumberTypeNode
       return $ tyNode { numberTypeNode = newNumberTypeNode }
+
+    Ty_Any        → do
+      key ← get
+      return $ tyNode { anyTypeNode = Set.insert key currAnyTypeNode }
 
 
 
@@ -256,8 +259,8 @@ insertRecordType recordType recTyNode@(Node_RecordType
         hasEntryTypeIndex = newHasEntryTypeIndex
       }
 
-    RecOfSize size    →  do
-      case size < 1 of
+    WithSize size     →  do
+      case size > 0 of
         True  →  do
           key ← get
           return recTyNode {
@@ -267,7 +270,7 @@ insertRecordType recordType recTyNode@(Node_RecordType
         -- No records exist of zero or negative size
         False →  return recTyNode
 
-    AnyRecord       → do
+    AnyRecord         → do
       key ← get
       return recTyNode {
         anyRecordTypeIndex = Set.insert key currAnyRecordTypeIndex
@@ -290,12 +293,12 @@ insertArrayType arrayType arrTyNode@(Node_ArrayType
         True  →  do
           newWithIndexTypeIndex ← updateTypeNodeMap index ty currWithIndexTypeIndex
           return arrTyNode {
-            withIndexTypeIndex = newWithIndexTypeIndex
+            withElemTypeIndex = newWithIndexTypeIndex
           }
         -- Invalid Index 
         False →  return arrTyNode
 
-    ArrOfSize size      →  do
+    WithArrLen size     →  do
       case size > 0 of
         True  →  do
           key ← get
@@ -405,13 +408,11 @@ insertTextType textType textTyNode@(Node_TextType
 insertNumberType ∷ NumberType → Node_NumberType
                     → NodeUpdate Node_NumberType
 insertNumberType numberType numTyNode@(Node_NumberType 
-                                  currIsNumberTypeIndex
-                                  currGreaterThanTypeIndex
-                                  currLessThanTypeIndex
-                                  currRangeTypeIndex
-                                  currIntegerTypeIndex
-                                  currNonNegativeTypeIndex
-                                  currAnyNumberTypeIndex  ) =
+                                       currIsNumberTypeIndex
+                                       currGreaterThanTypeIndex
+                                       currLessThanTypeIndex
+                                       currRangeTypeIndex
+                                       currAnyNumberTypeIndex  ) =
 
   case numberType of
 
@@ -434,24 +435,12 @@ insertNumberType numberType numTyNode@(Node_NumberType
         lessThanTypeIndex = updateKeySetMap key num currLessThanTypeIndex
       }
 
-    InRange lb ub   →  do
+    Range   lb ub   →  do
       key ← get
       let (currLbMap, currUbMap) = currRangeTypeIndex
       return numTyNode {
         rangeTypeIndex = ( updateKeySetMap key lb currLbMap
                          , updateKeySetMap key ub currUbMap )
-      }
-
-    Integer         →  do 
-      key ← get
-      return numTyNode {
-        integerTypeIndex = Set.insert key currIntegerTypeIndex
-      }
-
-    NonNegative     → do
-      key ← get
-      return numTyNode {
-        nonNegativeTypeIndex = Set.insert key currNonNegativeTypeIndex
       }
 
     AnyNumber       → do
@@ -466,29 +455,37 @@ insertNumberType numberType numTyNode@(Node_NumberType
 
 --------------------------- LOOKUP -------------------------
 
-lookup ∷ Value → TypeIndex → [Type]
+lookup ∷ Value → TypeIndex → HS.HashSet Type
 lookup value (TypeIndex tyNode tyMap _) =
   let getItem key = fromJust $ HMS.lookup key tyMap
-  in  L.map getItem $ Set.toList $ lookupTy value tyNode
+  in  HS.fromList $ fmap getItem $
+        Set.toList $ lookupValue value tyNode
 
 
 
 
-lookupTy ∷ Value → Node_Type → KeySet
-lookupTy value tyNode = deriveKeys tyNode typeKeys
+lookupValue ∷ Value → Node_Type → KeySet
+lookupValue value tyNode =
+  deriveKeys tyNode (valueTypeKeys `Set.union` anyTypeKeys)
+
   where
-    typeKeys =
+
+    -- Every value is type Any
+    anyTypeKeys = anyTypeNode tyNode
+
+    -- Lookup by structural type
+    valueTypeKeys =
       case value of
-        (Val_Rec  rec ) → lookupRecTy  rec  $ recordTypeNode tyNode
-        (Val_Arr  arr ) → lookupArrTy  arr  $ arrayTypeNode tyNode
-        (Val_Text text) → lookupTextTy text $ textTypeNode tyNode
-        (Val_Num  num ) → lookupNumTy  num  $ numberTypeNode tyNode
+        (Val_Rec  rec) → lookupRecord rec $ recordTypeNode tyNode
+        (Val_Arr  arr) → lookupArray  arr $ arrayTypeNode tyNode
+        (Val_Txt  txt) → lookupText   txt $ textTypeNode tyNode
+        (Val_Num  num) → lookupNumber num $ numberTypeNode tyNode
 
 
 
 
-lookupRecTy ∷ Record → Node_RecordType → KeySet
-lookupRecTy (Rec rec) (Node_RecordType
+lookupRecord ∷ Record → Node_RecordType → KeySet
+lookupRecord (Rec rec) (Node_RecordType
                        currHasEntryTypeIndex
                        currRecOfSizeTypeIndex
                        currAnyRecordTypeIndex ) =
@@ -510,7 +507,7 @@ lookupRecTy (Rec rec) (Node_RecordType
         entryTypes label entryVal = 
           let mEntryTypeNode = HMS.lookup label currHasEntryTypeIndex
           in  case mEntryTypeNode of
-                Just    tyNode → lookupTy entryVal tyNode
+                Just    tyNode → lookupValue entryVal tyNode
                 Nothing        → Set.empty
 
     -- | Lookup types describing record of this record's size
@@ -525,8 +522,8 @@ lookupRecTy (Rec rec) (Node_RecordType
 
 
 -- | Find all types at this node which describe the array
-lookupArrTy ∷ Array → Node_ArrayType → KeySet
-lookupArrTy (Arr arr) (Node_ArrayType
+lookupArray ∷ Array → Node_ArrayType → KeySet
+lookupArray (Arr arr) (Node_ArrayType
                        currWithIndexTypeIndex                               
                        currArrOfSizeTypeIndex  
                        currAnyArrayTypeIndex  ) = 
@@ -544,7 +541,7 @@ lookupArrTy (Arr arr) (Node_ArrayType
       let addIndexTypeKeys accKeys index arrElem = 
             let mTyNode = HMS.lookup index currWithIndexTypeIndex
                 keysAtIndex = case mTyNode of
-                                Just tyNode → lookupTy arrElem tyNode
+                                Just tyNode → lookupValue arrElem tyNode
                                 Nothing     → Set.empty
             in  accKeys `Set.union` keysAtIndex
       in  Seq.foldlWithIndex addIndexTypeKeys Set.empty arr
@@ -561,11 +558,11 @@ lookupArrTy (Arr arr) (Node_ArrayType
 
 
 -- | Find all types at this node which describe some text
-lookupTextTy ∷ Text → Node_TextType → KeySet
-lookupTextTy text (Node_TextType
-                   currWithTextLenTypeIndex
-                   currIsTextTypeIndex
-                   currAnyTextTypeIndex ) = 
+lookupText ∷ Text → Node_TextType → KeySet
+lookupText text (Node_TextType
+                 currWithTextLenTypeIndex
+                 currIsTextTypeIndex
+                 currAnyTextTypeIndex ) = 
 
   -- Union keys of all possible types for this value
               withTextLenTypeKeys
@@ -589,23 +586,19 @@ lookupTextTy text (Node_TextType
 
 
 
-lookupNumTy ∷ Number → Node_NumberType → KeySet
-lookupNumTy num  (Node_NumberType 
-                  currIsNumberTypeIndex
-                  currGreaterThanTypeIndex
-                  currLessThanTypeIndex
-                  currRangeTypeIndex
-                  currIntegerTypeIndex
-                  currNonNegativeTypeIndex
-                  currAnyNumberTypeIndex  ) =
+lookupNumber ∷ Number → Node_NumberType → KeySet
+lookupNumber num  (Node_NumberType 
+                   currIsNumberTypeIndex
+                   currGreaterThanTypeIndex
+                   currLessThanTypeIndex
+                   currRangeTypeIndex
+                   currAnyNumberTypeIndex  ) =
 
   -- Union keys of all possible types for this value
               isNumberTypeKeys
   `Set.union` greaterThanTypeKeys
   `Set.union` lessThanTypeKeys
   `Set.union` rangeTypeKeys
-  `Set.union` integerTypeKeys
-  `Set.union` nonNegativeTypeKeys
   `Set.union` anyNumberTypeKeys
 
   where
@@ -630,14 +623,6 @@ lookupNumTy num  (Node_NumberType
       in  (aboveLB `Set.union` areLB) `Set.intersection` 
           (belowUB `Set.union` areUB)
 
-    integerTypeKeys     = case num of
-                            Z _ → currIntegerTypeIndex
-                            _   → Set.empty
-
-    nonNegativeTypeKeys = case num >= (Z 0) of
-                            True  → currNonNegativeTypeIndex
-                            False → Set.empty
-      
     anyNumberTypeKeys   = currAnyNumberTypeIndex
       
   

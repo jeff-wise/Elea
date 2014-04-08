@@ -1,6 +1,6 @@
 
 
-module Test.Prelude
+module EleaTest.Prelude
     ( -- * Standard
       -- ** Operators
       (Prelude.$)
@@ -15,7 +15,6 @@ module Test.Prelude
     , Prelude.maybe
     , Prelude.either
     , Prelude.flip
-    , for
     , Prelude.const
     , Prelude.error
     , Prelude.odd
@@ -106,20 +105,9 @@ module Test.Prelude
     , Prelude.String
       -- ** Print
     , Prelude.print
-      -- ** Command line args
-    , (Control.Lens.Getter.^.)
-    , (Control.Lens.Setter..~)
-    , (Control.Lens.Setter.%~)
-    , (Control.Lens.Combinators.&)
-    , Control.Lens.TH.makeLenses
-    , (<|)
-    , viewl
-    , ViewL (..)
-    , (L.++)
     , module Test.Tasty
     , module Test.Tasty.HUnit
     , module Debug.Trace
-    , module Control.Concurrent.STM
     ) where
 
 import qualified Prelude
@@ -148,27 +136,11 @@ import qualified Data.Tuple
 import qualified Data.String
 
 
--- Lenses
-import qualified Control.Lens.Getter
-import qualified Control.Lens.Setter
-import qualified Control.Lens.Combinators
-import qualified Control.Lens.TH
-
-
--- Containers
-import Data.Sequence (Seq, (<|), viewl, ViewL (..))
 import Data.HashMap.Strict (HashMap)
-import Data.HashSet  as Set (HashSet)
-
-
--- Lists
-import Data.List.Stream as L
-
+import Data.HashSet (HashSet)
+import Data.Sequence (Seq)
 
 import Test.Tasty
 import Test.Tasty.HUnit
 
 
-import Control.Concurrent.STM
-
-for = Prelude.flip L.map

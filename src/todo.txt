@@ -3,11 +3,22 @@
 Final list of TODOs
 
 
+array indexing start at 1?
+
+annotated sourcce code for tests?
+
+disallow empty type lists for and/or
+
 coding conventions:
  rules for folds
 
 refine elea.prelude
 
+
+how to deal with symbols? optimize text to sym when possible?
+
+blog posts..etc how to make unique?
+  don't remember solution..
 
 names of system terms, make consistent/obvious
 

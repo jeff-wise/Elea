@@ -1,6 +1,6 @@
 
 
-module Elea.Lang.Exp.Value
+module Elea.Lang.Term.Value
   ( -- * Values
     Value (..)
   , Record (..), Array (..), Set (..)
@@ -22,16 +22,14 @@ import GHC.Generics (Generic)
 
 
 
----------------------------------------------------------------------
--- 1. Values
----------------------------------------------------------------------
+---------------------------- TYPES -------------------------
 
 data Value = 
-    Val_Rec     Record
-  | Val_Arr     Array
-  | Val_Set     Set
-  | Val_Text    Text
-  | Val_Num     Number
+    Val_Rec   Record
+  | Val_Arr   Array
+  | Val_Set   Set
+  | Val_Txt   Text
+  | Val_Num   Number
   deriving (Eq, Generic)
 
 
@@ -102,11 +100,11 @@ instance Hashable Number
 ---------------------------------------------------------------------
 
 instance Show Value where
-  show (Val_Rec  rec ) = show rec
-  show (Val_Arr  arr ) = show arr
-  show (Val_Set  set ) = show set
-  show (Val_Text text) = show text
-  show (Val_Num  num ) = show num
+  show (Val_Rec  rec) = show rec
+  show (Val_Arr  arr) = show arr
+  show (Val_Set  set) = show set
+  show (Val_Txt  txt) = show txt
+  show (Val_Num  num) = show num
 
 
 instance Show Record where
@@ -138,16 +136,16 @@ instance Show Number where
 
 instance Eq Number where
   (==) (Z x) (Z y) = x == y
-  (==) (Z i) (R d) = fromIntegral i == d
+  (==) (Z i) (R d) = (fromIntegral i ∷ Double) == d
   (==) (R x) (R y) = x == y
-  (==) (R d) (Z i) = d == fromIntegral i
+  (==) (R d) (Z i) = d == (fromIntegral i ∷ Double)
 
 
 instance Ord Number where
   compare (Z x) (Z y) = compare x y
   compare (R x) (R y) = compare x y
-  compare (Z i) (R d) = compare (fromIntegral i) d
-  compare (R d) (Z i) = compare d (fromIntegral i)
+  compare (Z i) (R d) = compare (fromIntegral i :: Double) d
+  compare (R d) (Z i) = compare d (fromIntegral i :: Double)
 
 
 instance Num Number where

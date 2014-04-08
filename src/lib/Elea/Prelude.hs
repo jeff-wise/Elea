@@ -25,7 +25,6 @@ module Elea.Prelude
     , Prelude.until
     , Prelude.asTypeOf
     , Prelude.undefined
-    , Prelude.seq
       -- ** Type classes
     , Prelude.Ord (..)
     , Prelude.Eq (..)
@@ -60,6 +59,10 @@ module Elea.Prelude
     , Prelude.Rational
     , Prelude.Float
     , Prelude.Double
+      -- ** Containers
+    , HashMap
+    , HashSet
+    , Seq
       -- ** Numeric functions
     , (Prelude.^)
     , (Prelude.^^)
@@ -132,4 +135,7 @@ import qualified Data.String
 
 
 
+import Data.HashMap.Strict (HashMap)
+import Data.HashSet (HashSet)
+import Data.Sequence (Seq)
 

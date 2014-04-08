@@ -10,14 +10,15 @@ module Elea.Lang.Sem.ValueIndex (
 import Elea.Prelude
 
 import Elea.Lang.Term.Value
+import Elea.Lang.Term.Type
 
 
-import qualified Data.Foldable as F
+import Data.Foldable as F
+import Data.Hashable
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as HS
-import qualified Data.List.Stream as L
 import qualified Data.Map as Map
-import qualified Data.Sequence as Seq
+import Data.Sequence as Seq
 import qualified Data.Set as Set
 import qualified Data.Text as T
 
@@ -30,22 +31,24 @@ import qualified Data.Text as T
 -- | A key which identifies a particular type.
 -- If a value matches a type at some type node, then
 -- that type node should return the corresponding key.
-type MatchKey = Int
+type TypeKey = Int
 
 
 -- | A set of keys
 -- A keyset at a terminating node indicates that
 -- its path intersects multiple types
-type KeySet = Set.Set MatchKey
+type KeySet = Set.Set TypeKey
 
 
+-- | Increment counter to ensure unique key generation
+type KeyCounter = Int
 
 
 -- | Value Index
 data ValueIndex = ValueIndex
-  { _valNode        ∷ Node_Value
-  , _valMap         ∷ HMS.HashMap MatchKey Value
-  , _valKeyCounter  ∷ Int
+  { indexValueNode  ∷ Node_Value
+  , indexValueMap   ∷ HMS.HashMap TypeKey Value
+  , indexKeyCounter ∷ KeyCounter
   }
 
 
@@ -72,413 +75,359 @@ data ValueIndex = ValueIndex
 --    on an ordered map (binary tree) very quickly, as opposed
 --    to linearly by examine the node at each tree separately.
 --
+-- Each node indexes a value by different attributes, so that
+-- searches for values with specific properties can on average
+-- proceed very fast. In essence, we are throwing space/memory
+-- away to get fast lookups, which will be very important for 
+-- queries. We assume space is cheap, but the amount of indexing
+-- can always be tuned later.
 data Node_Value = Node_Value
-  { _node_Rec   ∷  Node_Rec
-  , _node_Arr   ∷  Node_Arr
-  , _node_Set   ∷  Node_Set
-  , _node_Text  ∷  Node_Text
-  , _node_Num   ∷  Node_Num
+  { recordNode  ∷  Node_Record
+  , arrayNode   ∷  Node_Array
+  , textNode    ∷  Node_Text
+  , numberNode  ∷  Node_Number
   }
 
 
-data Node_Rec = Node_Rec
-  { _recNodeHM   ∷ HMS.HashMap T.Text Node_Value
-  , _recSizeMap  ∷ HMS.HashMap MatchKey Int
+data Node_Record = Node_Record
+  { entryIndex      ∷ HMS.HashMap T.Text Node_Value
+  , recordSizeIndex ∷ HMS.HashMap Int KeySet
   } 
 
 
-data Node_Set = Node_Set
-  { _setKeyMap  ∷  HMS.HashMap MatchKey MatchKey
-  , _setSizeMap ∷  HMS.HashMap MatchKey Int
-  , _setValNode ∷  Node_Value
-  , _setCounter ∷  Int
+data Node_Array = Node_Array
+  { elementIndex      ∷ Seq.Seq Node_Value
+  , arrayLengthIndex  ∷ HMS.HashMap Int KeySet
   }
 
 
-data Node_Arr = Node_Arr
-  { _arrNodeSeq ∷ Seq.Seq Node_Value }
+data Node_Text = Node_Text 
+  { textIndex       ∷ HMS.HashMap Text KeySet
+  , textLengthIndex ∷ HMS.HashMap Int KeySet
+  }
 
 
-data Node_Num = Node_Num
-  { _numMap ∷  Map.Map Number KeySet }
-
-
-data Node_Text = Node_Text
-  { _textMap  ∷  HMS.HashMap Text KeySet }
-
-
-
--- Lenses for Value Node
-makeLenses ''Node_Value
-
-
-
-
---------------------------- SHOW ---------------------------
-
-instance Show ValueIndex where
-  show (ValueIndex valNode valItemMap valKeyCounter) =
-    "ValNode:\n " ++ show valNode ++ "\n" ++
-    "ItemMap:\n " ++ show valItemMap ++ "\n" ++
-    "Counter:\n " ++ show valKeyCounter ++ "\n"
- 
-
-instance Show Node_Value where 
-  show nodeVal =
-    "Set:\n " ++ (show $ _node_Set nodeVal) ++ "\n" ++
-    "Arr:\n " ++ (show $ _node_Arr nodeVal) ++ "\n" ++ 
-    "Num:\n " ++ (show $ _node_Num nodeVal) ++ "\n" ++
-    "Text:\n " ++ (show $ _node_Text nodeVal) ++ "\n" ++
-    "Sym:\n " ++ (show $ _node_Sym nodeVal) ++ "\n"
-
-
-instance Show Node_Dict where
-  show (Node_Dict dictHM) = show dictHM
-
-
-instance Show Node_Arr where
-  show (Node_Arr arrSeq) = show arrSeq
-
-
-instance Show Node_Set where
-  show (Node_Set keyMap _ valNode _) =
-    "KeyMap:\n " ++ show keyMap ++ "\n"  ++
-    "ValNode:\n " ++ show valNode ++ "\n" 
-
-
-instance Show Node_Num where
-  show (Node_Num numMap) = show numMap
-
-
-instance Show Node_Text where
-  show (Node_Text textMap) = show textMap
-
-
-
----------------------------------------------------------------------
--- 1.5 Lenses
----------------------------------------------------------------------
+newtype Node_Number = Node_Number
+  { numberIndex   ∷ Map.Map Number KeySet }
 
 
 
 
 
----------------------------------------------------------------------
--- 1.6 Constructors
----------------------------------------------------------------------
+------------------------ CONSTRUCTORS ----------------------
 
 newValueIndex ∷ ValueIndex
 newValueIndex = ValueIndex
-  { _valNode        =  newValueNode
-  , _valMap         =  HMS.empty
-  , _valKeyCounter  =  0
+  { indexValueNode  =  newValueNode
+  , indexValueMap   =  HMS.empty
+  , indexKeyCounter =  0
   }
 
 
 -- | Lazily construct a value node
 newValueNode ∷ Node_Value
 newValueNode = Node_Value
-  { _node_Dict  = Node_Dict HMS.empty
-  , _node_Arr   = Node_Arr Seq.empty
-  , _node_Set   = Node_Set HMS.empty HMS.empty newValueNode 0
-  , _node_Text  = Node_Text HMS.empty
-  , _node_Num   = Node_Num Map.empty
+  { recordNode  = Node_Record HMS.empty HMS.empty
+  , arrayNode   = Node_Array Seq.empty HMS.empty
+  , textNode    = Node_Text HMS.empty HMS.empty
+  , numberNode  = Node_Number Map.empty
   }
 
 
 
 
----------------------------------------------------------------------
--- 2.0 Insert
----------------------------------------------------------------------
+--------------------------- INSERT -------------------------
 
 -- Values are verified by the system to be unique before inserted.
 insert ∷ Value → ValueIndex → ValueIndex
-insert val (ValIndex valNode valItemMap valKeyCounter) =
-  ValueIndex {
-    _valNode       = insertValue val valKeyCounter valNode
-  , _valMap        = HMS.insert valKeyCounter val valItemMap
-  , _valKeyCounter = valKeyCounter + 1
+insert value (ValueIndex currValueNode valueMap currKey) =
+  ValueIndex
+  { indexValueNode  = insertValue value currKey currValueNode
+  , indexValueMap   = HMS.insert currKey value valueMap
+  , indexKeyCounter = currKey + 1
   }
 
 
 
-insertValue ∷ Value → MatchKey → Node_Value → Node_Value
+insertValue ∷ Value → TypeKey → Node_Value → Node_Value
+insertValue value key valNode@(Node_Value
+                               currRecordNode
+                               currArrayNode
+                               currTextNode
+                               currNumberNode ) = 
 
-insertValue (Val_Dict dict) key node  = node & node_Dict %~ insertDict dict  key
+  case value of
+    Val_Rec rec →  valNode {
+                        recordNode  = insertRecord rec key currRecordNode
+                      }
+    Val_Arr arr →  valNode {
+                        arrayNode   = insertArray  arr key currArrayNode
+                      } 
+    Val_Txt txt →  valNode {
+                        textNode    = insertText   txt key currTextNode
+                      }
+    Val_Num num →  valNode {
+                        numberNode  = insertNumber num key currNumberNode
+                      }
 
-insertValue (Val_Arr  arr ) key node  = node & node_Arr  %~ insertArr  arr  key
-
-insertValue (Val_Set  set ) key node  = node & node_Set  %~ insertSet  set key
-
-insertValue (Val_Text text) key node  = node & node_Text %~ insertText text key
-
-insertValue (Val_Num  num ) key node  = node & node_Num  %~ insertNum  num  key
-
-insertValue _               _   node  = node
 
 
 
-
-insertDict ∷ Dict → MatchKey → Node_Dict → Node_Dict
-insertDict (Dict insHM) matchKey (Node_Dict dictNodeHM) =
-  let updateDict nodeHM insKey insVal =
-        case HMS.lookup insKey nodeHM of
-          Just valNode  →
-            HMS.insert insKey (insertValue insVal matchKey valNode)
-          Nothing       →
-            HMS.insert insKey (insertValue insVal matchKey newValNode)
-  in  Node_Dict 
-      { _dictNodeHM  = HMS.foldlWithKey' updateDict dictNodeHM insHM
-      , _dictSizeMap = HMS.insert matchKey (HMS.size insHM)
+insertRecord ∷ Record → TypeKey → Node_Record → Node_Record
+insertRecord (Rec rec) key
+             (Node_Record currEntryIndex currRecordSizeIndex) =
+  let insertEntry accEntryIndex label entryValue =
+              HMS.insertWith
+                (\_ currEntryValueNode → 
+                    insertValue entryValue key currEntryValueNode)
+                label
+                (insertValue entryValue key newValueNode)
+                accEntryIndex
+  in  Node_Record 
+      { entryIndex      = HMS.foldlWithKey' insertEntry currEntryIndex rec
+      , recordSizeIndex =
+          updateKeySetHashMap key (HMS.size rec) currRecordSizeIndex
       }
     
 
-insertArr ∷ Array → MatchKey → Node_Arr → Node_Arr
-insertArr (Arr arr) key (Node_Arr nodeSeq) =
-  Node_Arr $ go (viewl arr) (viewl nodeSeq)
+
+insertArray ∷ Array → TypeKey → Node_Array → Node_Array
+insertArray (Arr arrSeq) key
+            (Node_Array currElementIndex currArrayLengthIndex) =
+  Node_Array
+      { elementIndex      = updateElementIndex arrSeq currElementIndex
+      , arrayLengthIndex  =
+          updateKeySetHashMap key (Seq.length arrSeq) currArrayLengthIndex
+      }
+
   where
-    go EmptyL           EmptyL                   = Seq.empty
-    go EmptyL           (valNode :< remValNodes) = valNode <| remValNodes
-    go (val :< remVals) EmptyL                   = 
-      fmap (\x → insertValue x key newValNode) (val <| remVals)
-    go (val :< remVals) (valNode :< remValNodes) =
-      insertValue val key valNode <| go (viewl remVals) (viewl remValNodes)
 
-
-
-insertSet ∷ Set → MatchKey → Node_Set → Node_Set
-insertSet (Set set) key (Node_Set keyMap sizeMap valNode counter) =
-  let counter'  = counter + setSize
-      sizeMap'  = HMS.insert key setSize sizeMap
-      valNode'  = L.foldl' addSetElemToNode valNode
-                      (HS.toList set `L.zip` setKeys)
-      keyMap'   = L.foldl' addElemKeyToMap keyMap setKeys
-  in  Node_Set keyMap' sizeMap' valNode' counter'
-  where
-    setSize   = HS.size set
-    setKeys   = [counter..(counter + setSize -1)]
-    addSetElemToNode node (elem, elemKey) = insertValue elem elemKey node
-    addElemKeyToMap currKeyMap elemKey = HMS.insert elemKey key currKeyMap
-
-
-
-insertText ∷ Text → MatchKey → Node_Text → Node_Text
-insertText text key (Node_Text textMap) = Node_Text $
-  HMS.insertWith Set.union text (Set.singleton key) textMap
-
-
-
-insertNum ∷ Number → MatchKey → Node_Num → Node_Num
-insertNum num key (Node_Num numMap) = Node_Num $
-  Map.insertWith Set.union num (Set.singleton key) numMap
+    updateElementIndex seq elemIndex = go (viewl seq) (viewl elemIndex)
+      where
+        go EmptyL           EmptyL                   = Seq.empty
+        go EmptyL           (valNode :< remValNodes) = valNode <| remValNodes
+        go (val :< remVals) EmptyL                   = 
+          fmap (\x → insertValue x key newValueNode) (val <| remVals)
+        go (val :< remVals) (valNode :< remValNodes) =
+          insertValue val key valNode <| go (viewl remVals) (viewl remValNodes)
 
 
 
 
----------------------------------------------------------------------
--- 3.0 Lookup
----------------------------------------------------------------------
+insertText ∷ Text → TypeKey → Node_Text → Node_Text
+insertText text key (Node_Text currTextIndex currTextLengthIndex) =
+  Node_Text
+    { textIndex       = updateKeySetHashMap key text currTextIndex
+    , textLengthIndex =
+        updateKeySetHashMap key (T.length $ primText text) currTextLengthIndex  
+    }
 
+
+
+
+insertNumber ∷ Number → TypeKey → Node_Number → Node_Number
+insertNumber number key (Node_Number currNumberIndex) =
+  Node_Number {
+    numberIndex =  updateKeySetMap key number currNumberIndex
+  }
+
+
+
+-------------------------- LOOKUP --------------------------
+
+-- | Lookup values by property.
 lookup ∷ Type → ValueIndex → HS.HashSet Value
-lookup ty (ValIndex valNode valMap _) =
-  let matchKeys = Set.toList $ lookupValue ty valNode
-  in  HS.fromList $ (flip fmap) matchKeys (\matchKey →
-        case HMS.lookup matchKey valMap of
-          Just val → val
-          Nothing  → error "Should not happen"
+lookup typ (ValueIndex valueNode valueMap _) =
+  let typeKeys = Set.toList $ lookupType typ valueNode
+  in  HS.fromList $ (flip fmap) typeKeys (\typeKey →
+        case HMS.lookup typeKey valueMap of
+          Just value  → value
+          Nothing     → error "Should not happen"
       )
 
 
 
-lookupValue ∷ Type → Node_Value → KeySet
+lookupType ∷ Type → Node_Value → KeySet
+lookupType typ valueNode = 
 
-lookupValue (Ty_Dict dictTy) node  = lookupDict dictTy $ _node_Dict node
+  case typ of
+    Ty_Rec  recTy → lookupRecordType recTy $ recordNode valueNode
+    Ty_Arr  arrTy → lookupArrayType  arrTy $ arrayNode  valueNode
+    Ty_And  andTy → lookupAndType    andTy valueNode
+    Ty_Or   orTy  → lookupOrType     orTy  valueNode
+    Ty_Txt  txtTy → lookupTextType   txtTy $ textNode   valueNode
+    Ty_Num  numTy → lookupNumberType numTy $ numberNode valueNode
+    Ty_Any        → allNodeValues
 
-lookupValue (Ty_Arr  arrTy ) node  = lookupArr  arrTy  $ _node_Arr  node
+  where
 
-lookupValue (Ty_Set  setTy ) node  = lookupSet  setTy  $ _node_Set  node
-
-lookupValue (Ty_And  andTy ) node  = lookupAnd  andTy node
-
-lookupValue (Ty_Or   orTy  ) node  = lookupOr   orTy  node
-
-lookupValue (Ty_Text textTy) node  = lookupText textTy $ _node_Text node 
-
-lookupValue (Ty_Num  numTy ) node  = lookupNum  numTy  $ _node_Num  node
-
-lookupValue (Ty_Any        ) node  = (lookupSet  AnySet    $ _node_Set  node)
-                       `Set.union` (lookupArr  AnyArray  $ _node_Arr  node)
-                       `Set.union` (lookupText AnyText   $ _node_Text node)
-                       `Set.union` (lookupNum  AnyNumber $ _node_Num  node)
-                       `Set.union` (lookupSym  AnySymbol $ _node_Sym  node)
+    allNodeValues = (lookupRecordType AnyRecord $ recordNode valueNode)
+        `Set.union` (lookupArrayType  AnyArray  $ arrayNode valueNode)
+        `Set.union` (lookupTextType   AnyText   $ textNode valueNode)
+        `Set.union` (lookupNumberType AnyNumber $ numberNode valueNode)
 
 
 
 
-lookupDict ∷ DictTy → Node_Dict → KeySet
+lookupRecordType ∷ RecordType → Node_Record → KeySet
+lookupRecordType recordType
+                (Node_Record currEntryIndex currRecordSizeIndex) =
 
-lookupDict (HasEntry key ty  ) (Node_Dict nodeHM) = 
-  case HMS.lookup key nodeHM of
-    Just valNode  →  lookupValue ty valNode
-    Nothing       →  Set.empty
+  case recordType of
 
-lookupDict (IsDict entryTypes) (Node_Dict nodeHM sizeMap) =
-  let collKeys Nothing        _         = Nothing
-      collKeys (Just keyMap) (key, ty) = do
-        valNode ← HMS.lookup key nodeHM
-        let matchKeys = lookupValue ty valNode
-            insMatchKey hm key = HMS.insertWith (+) key 1 hm
-        return $ Just $ L.foldr insMatchKey keyMap
-                        . lookupValue ty valNode
-      filterTotalMatches matchKeys (key, found) =
-        case HMS.lookup key sizeMap of
-          Just size →  if size == found
-                          then insert key matchKeys
-                          else matchKeys
-          Nothing   →  matchKeys 
-  in      entryTypes
-      >$> L.foldr collKeys (Just HMS.empty)
-      >>> HMS.foldl' filterTotalMatches Set.empty
+    HasEntry label entryType  →
+      case HMS.lookup label currEntryIndex of
+        Just entryValueNode → lookupType entryType entryValueNode
+        Nothing             →  Set.empty
+
+    WithSize size             →
+      case HMS.lookup size currRecordSizeIndex of
+        Just typeKeys → typeKeys
+        Nothing       → Set.empty
+
+    AnyRecord                 →
+                  (HMS.foldl' consNodeMapKeySets Set.empty currEntryIndex)
+      `Set.union` (allIndexKeys currRecordSizeIndex)
 
 
 
 
-lookupArr ∷ ArrayTy → Node_Arr → KeySet
+lookupArrayType ∷ ArrayType → Node_Array → KeySet
+lookupArrayType arrayType
+                (Node_Array currElementIndex currArrayLengthIndex) =
 
-lookupArr (WithIndex idx ty) (Node_Arr nodeArr) =
-  if (idx >= 0) && (idx < Seq.length nodeArr)
-    then lookupValue ty $ Seq.index nodeArr idx
-    else Set.empty
+  case arrayType of
 
-lookupArr (IsArray  tySeq ) (Node_Arr nodeArr) =
-  let go _                EmptyL                    = Set.empty
-      go EmptyL           _                         = Set.empty
-      go (ty :< remTys)   (valNode :< remValNodes)
-        | Seq.null remTys = lookupValue ty valNode
-        | otherwise       = Set.intersection
-                              (lookupValue ty valNode)
-                              (go (viewl remTys) (viewl remValNodes))
-  in  go (viewl tySeq) (viewl nodeArr)
-
-lookupArr AnyArray           (Node_Arr nodeArr) =
-    F.foldl' Set.union Set.empty $
-      fmap (lookupValue Ty_Any) nodeArr
-
-
-
-
-lookupSet ∷ SetTy → Node_Set → KeySet
-
-lookupSet (WithElem    elemTy) (Node_Set setMap _ valNode _      ) =
-  let elemKeys = lookupValue elemTy valNode
-      collectSetKeys setKeys elemKey = 
-        setKeys `Set.union` 
-        (maybe Set.empty Set.singleton $ HMS.lookup elemKey setMap)
-  in Set.foldl' collectSetKeys Set.empty elemKeys
-{-
-lookupSet (IsSet setTys      ) (Node_Set setMap sizeMap valNode _) =
-  let unionElemMatches matchKeys nextElemTy = 
-        matchKeys `Set.union` lookupValue nextElemTy valNode
-      countSetMatches matchMap elemKey =
-        case HMS.lookup elemKey setMap of
-          Just setKey → Map.insertWith (+) setKey 1 matchMap
-          Nothing     → error "Should not happen (refactor)"
-      filterTotalMatches matches setKey keyCount =
-        case HMS.lookup setKey sizeMap of
-          Just setSize  →  if setSize == keyCount
-                              then Set.insert setKey matches
-                              else matches
-          Nothing       →  error "should not happen (refactor)"
-  in      setTys  
-      >$> HS.foldl' unionElemMatches Set.empty         
-      >>> Set.foldl' countSetMatches Map.empty
-      >>> Map.foldlWithKey' filterTotalMatches Set.empty
--}
-lookupSet (SetWithSize num   ) (Node_Set _ sizeMap _ _) =
-  let size = maybe 0 id $ asInt num
-  in  if size > 0
-        then  Set.fromList $ HMS.keys $
-                HMS.filter (==size) sizeMap
+    WithIndex idx typ →
+      if (idx >= 0) && (idx < Seq.length currElementIndex)
+        then lookupType typ $ Seq.index currElementIndex idx
         else Set.empty
 
-lookupSet AnySet                  (Node_Set _ sizeMap _ _) =
-  Set.fromList $ HMS.keys sizeMap
+    WithArrLen len    →
+      case HMS.lookup len currArrayLengthIndex of 
+        Just keys → keys
+        Nothing   → Set.empty
+
+    AnyArray          →
+                  (F.foldl' consNodeMapKeySets Set.empty currElementIndex)
+      `Set.union` (allIndexKeys currArrayLengthIndex)
+
+
+
+-- | Lookup values that satisfy intersection type.
+-- Here we literally take the intersection of all the values
+-- which satisfy each AND member type.
+-- I.e. we provide a list of criteria that a value must meet
+-- to be selected, and only take values which meet each
+-- requirement.
+lookupAndType ∷ AndType → Node_Value → KeySet
+lookupAndType (AndType tyList) valueNode =
+  F.foldr1 Set.intersection $
+    fmap (\typ → lookupType typ valueNode) tyList
 
 
 
 
-lookupAnd ∷ AndTy → Node_Val → KeySet
-lookupAnd (AndTy ty1 ty2) valNode =
-  lookupValue ty1 valNode `Set.intersection` lookupValue ty2 valNode
+-- | Lookup values that satisfy union type.
+-- Here we literally take the union of all the values
+-- which satisfy each OR member type.
+-- I.e. we provide a list of optional properties, and take
+-- any value that has at least one of those properties.
+lookupOrType ∷ OrType → Node_Value → KeySet
+lookupOrType (OrType tyList) valueNode =
+  F.foldl' Set.union Set.empty $
+    fmap (\typ → lookupType typ valueNode) tyList
 
 
 
 
-lookupOr ∷ OrTy → Node_Val → KeySet
-lookupOr (OrTy ty1 ty2) valNode =
-  lookupValue ty1 valNode `Set.union` lookupValue ty2 valNode
+
+lookupTextType ∷ TextType → Node_Text → KeySet
+lookupTextType textType
+               (Node_Text currTextIndex currTextLengthIndex) =
+
+  case textType of
+
+    IsText      text  →
+      case HMS.lookup text currTextIndex of
+        Just keySet → keySet
+        Nothing     → Set.empty
+
+    WithTextLen len   →
+      case HMS.lookup len currTextLengthIndex of
+        Just keySet → keySet
+        Nothing     → Set.empty
+
+    AnyText           →
+                  (allIndexKeys currTextIndex)
+      `Set.union` (allIndexKeys currTextLengthIndex)
 
 
 
 
-lookupText ∷ TextTy → Node_Text → KeySet
+lookupNumberType ∷ NumberType → Node_Number → KeySet
+lookupNumberType numberType (Node_Number currNumberIndex) =
 
-lookupText (WithTextLen len ) (Node_Text textMap) =
-  let unionWhenLen keySet text keys =
-        Set.union keySet $
-          if T.length (_getText text) == len
-           then keys
-           else Set.empty
-  in  HMS.foldlWithKey' unionWhenLen Set.empty textMap
+  case numberType of
 
-lookupText (IsText      text) (Node_Text textMap) =
-  maybe Set.empty id $ HMS.lookup text textMap
+    IsNumber    num →  case Map.lookup num currNumberIndex of
+                          Just keySet → keySet
+                          Nothing     → Set.empty
 
-lookupText AnyText            (Node_Text textMap) =
-  HMS.foldl' Set.union Set.empty textMap
+    GreaterThan lb  →  Map.foldl' Set.union Set.empty $
+                          snd $ Map.split lb currNumberIndex 
+
+    LessThan    ub  →  Map.foldl' Set.union Set.empty $
+                          fst $ Map.split ub currNumberIndex 
+
+    Range  lb ub    →  
+      let lbKeys  = maybe Set.empty id $ Map.lookup lb currNumberIndex
+          ubKeys  = maybe Set.empty id $ Map.lookup ub currNumberIndex
+          btwKeys = Map.foldl' Set.union Set.empty $
+                      fst $ Map.split ub $ snd $ Map.split lb currNumberIndex
+      in  lbKeys `Set.union` btwKeys `Set.union` ubKeys
+
+    AnyNumber       →  allIndexKeys currNumberIndex
+
+
+
+-------------------------- APPENDIX ------------------------
+------------------------------------------------------------
+
+
+--------------------- UTILITY FUNCTIONS --------------------
+
+updateKeySetMap ∷ (Ord a) ⇒ TypeKey → a → Map.Map a KeySet
+                    → Map.Map a KeySet
+updateKeySetMap typeKey mapKey keySetMap =  
+    Map.insertWith
+      Set.union                 -- Union old keyset with new keyset
+      mapKey
+      (Set.singleton typeKey)  -- Insert new key as set
+      keySetMap
+
+
+
+updateKeySetHashMap ∷ (Eq a, Hashable a) ⇒
+                       TypeKey → a → HMS.HashMap a KeySet
+                       → HMS.HashMap a KeySet
+updateKeySetHashMap typeKey mapKey keysetMap =  
+    HMS.insertWith
+      Set.union             -- Union old keyset with new keyset
+      mapKey
+      (Set.singleton typeKey)   -- Insert new key as set
+      keysetMap
 
 
 
 
-lookupNum ∷ NumberTy → Node_Num → KeySet
+consNodeMapKeySets ∷ KeySet → Node_Value → KeySet
+consNodeMapKeySets accKeys valueNode =
+  accKeys `Set.union` (lookupType Ty_Any valueNode)
 
-lookupNum (IsNumber     num       ) (Node_Num numMap) =
-    maybe Set.empty id $ Map.lookup num numMap
 
-lookupNum (GreaterThan  lowerBound) (Node_Num numMap) =
-  Map.foldl' Set.union Set.empty $
-    snd $ Map.split lowerBound numMap 
 
-lookupNum (LessThan     upperBound) (Node_Num numMap) =
-  Map.foldl' Set.union Set.empty $
-    fst $ Map.split upperBound numMap 
-
-lookupNum (InRange  x  y          ) (Node_Num numMap) =
-    let xKeys = maybe Set.empty id $ Map.lookup x numMap
-        yKeys = maybe Set.empty id $ Map.lookup y numMap
-        btwKeys = Map.foldl' Set.union Set.empty $
-                    fst $ Map.split y $ snd $ Map.split x numMap
-    in  xKeys `Set.union` btwKeys `Set.union` yKeys
-
-lookupNum Even                      (Node_Num numMap) =
-    Map.foldl' Set.union Set.empty $
-      Map.filterWithKey (\k _ → numEven k) numMap
-
-lookupNum Odd                       (Node_Num numMap) =
-    Map.foldl' Set.union Set.empty $
-      Map.filterWithKey (\k _ → numOdd k) numMap
-
-lookupNum Integer                   (Node_Num numMap) =
-    Map.foldl' Set.union Set.empty $
-      Map.filterWithKey (\k _ → isInteger k) numMap
-
-lookupNum NonNegative               (Node_Num numMap) =
-    Map.foldl' Set.union Set.empty $
-      Map.filterWithKey (\k _ → k >= 0) numMap
-
-lookupNum AnyNumber                (Node_Num numMap) =
-    Map.foldl' Set.union Set.empty numMap
-
+allIndexKeys ∷ (Foldable f) ⇒ f KeySet → KeySet
+allIndexKeys f = F.foldl' Set.union Set.empty f
 
 

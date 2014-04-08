@@ -30,13 +30,10 @@ Library
     
     ghc-options:        -Wall -fno-warn-orphans -fno-warn-missing-signatures
 
-    exposed-modules:    Elea.Lang.Atom.Type,
-                        Elea.Lang.Atom.Types,
-                        Elea.Lang.Atom.Lens
-                        Elea.Lang.Atom.Val,
-                        Elea.Lang.Index.Val,
-                        Elea.Lang.Index.Type,
-                        Elea.Lang.Exp.Types
+    exposed-modules:    Elea.Lang.Term.Type,
+                        Elea.Lang.Term.Value,
+                        Elea.Lang.Sem.ValueIndex,
+                        Elea.Lang.Sem.TypeIndex
 
     other-modules:      Elea.Prelude
 
@@ -65,17 +62,11 @@ Executable testsuite
 
     hs-source-dirs:     src/test
 
-    main-is:            Test/Main.hs
+    main-is:            EleaTest/Main.hs
 
-    other-modules:      Test.Prelude,
-                        Test.Data.Blog,
-                        Test.Elea.Lang.Atom.Lens,
-                        Test.Elea.Lang.Atom.Val,
-                        Test.Elea.Lang.Atom.Type,
-                        Test.Elea.Lang.Index.Type,
-                        Test.Elea.Lang.Index.Val
-                        Test.Elea.Lang.Index.Val
-
+    other-modules:      EleaTest.Prelude,
+                        EleaTest.Lang.Sem.ValueIndex
+                        EleaTest.Lang.Sem.TypeIndex
     
 
     build-depends:      base ==4.6.*,

@@ -1,6 +1,12 @@
 
 
-module Elea.Lang.Term.System where
+module Elea.Lang.Term.System
+  ( -- * Force
+    -- * Action Potential
+    -- * Receptor
+    -- * Particle
+
+  ) where
 
 
 
@@ -9,78 +15,16 @@ import Elea.Lang.Term.Transformer
 
 
 
------------------------- SYSTEM ---------------------------
-
-type BroadcastTrans = Signal → Value → STM [Reaction]
-type SendTrans = Signal → STM (Maybe Reaction)
-
-type AddParticleTrans = Particle → STM ()
-
-type TriggeredTrans = Value → STM [Signal]
-
-type QueryTrans = Type → STM [Particle]
-
-
-data SystemI =
-  SysI
-    BroadcastTrans
-    AddParticleTrans
-    TriggeredTrans
-    QueryTrans
-
-
-
-
----------------------- FORCE INTERFACE --------------------
-
-type SynthesizeTrans = Context → Synthesis → STM ()
-
-type TransformTrans = Transformer → STM Value
-type ProjectTrans = Projection → Value → STM ()
-
-type EncodeTrans = Context → Encoding → STM ()
-
-
-data ForceI =
-  ForceI
-    SynthesizeTrans
-    EncodeTrans
-
-
-
-
-
---------------------- RUNTIME INTERFACE --------------------
-
--- | Runtime transactions
-type AppendActionTrans = Action → STM ()
-type FindSystemTrans = SystemId → STM System
-
-
-data RuntimeI =
-  RunI
-    AppendActionTrans
-    FindSystemTrans
-    QueryTrans
-
-
--- | Runtime Exceptions
-data RuntimeException =
-    SystemNotFound
-  | DuplicateParticle
-
-
-
-
 --------------------------- FORCE -------------------------
 
-type ForceId = T.Text
-
-
-
+-- | Force
 data Force =
     F_Syn Synthesis
   | F_Enc Encoding 
+
+
+type ForceId = T.Text
+
     
 
 data Synthesis = Syn Transformer [Projection]
@@ -93,8 +37,6 @@ data Projection = Projection Lens SystemId
 
 
 ---------------------- ACTION POTENTIAL --------------------
-
--- ***** Introductory Forms
 
 type APId = T.Text
 type EventClass = Lens
@@ -109,20 +51,11 @@ type ParamMap = HMS.HashMap Signal Value
 data ActionPotential = AP EventClass [Signal] [ForceId]
 
 
-
--- ***** Evaluation Forms
-
-type SignalIndex = HMS.HashMap Signal [APId]
-
-
+-- | An action potential may choose whether to accept signals.
+-- An Inhibited AP loses all current events and ignores all
+-- incoming signals.
 data APState = Inhibited | Active
 
-type APTransMap = HMS.HasHMap ApId (APSTate, Trans_ActionPotential)
-
-
-type EventMap = HMS.HashMap Value (TVar Event)
-
-type Event = HMS.HashMap Signal (Maybe Value)
 
 
 
@@ -195,6 +128,7 @@ getForce ∷ ForceDict → ForceId → Maybe Force
 getForce forceHM forceId = fromJust $ HMS.lookup forceId forceHM
 
 
+-- TODO map multiple signals to type any
 
 
 

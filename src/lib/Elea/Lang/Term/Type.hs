@@ -1,9 +1,9 @@
 
 
-module Elea.Lang.Exp.Type
+module Elea.Lang.Term.Type
   ( -- * Types
     Type (..)
-  , RecordType (..), ArrayType (..), SetType (..)
+  , RecordType (..), ArrayType (..)
   , AndType (..), OrType (..)
   , TextType (..), NumberType (..)
   ) where
@@ -12,9 +12,11 @@ module Elea.Lang.Exp.Type
 
 import Elea.Prelude
 
-import Elea.Lang.Exp.Value
+import Elea.Lang.Term.Value
 
 
+import Data.Foldable as F (foldr1)
+import Data.List ((++))
 import Data.Hashable
 import qualified Data.Text as T
 
@@ -28,14 +30,13 @@ import GHC.Generics (Generic)
 
 data Type = 
     Ty_Rec    RecordType
-  | Ty_Set    SetType
   | Ty_Arr    ArrayType
   | Ty_And    AndType
   | Ty_Or     OrType
-  | Ty_Text   TextType
+  | Ty_Txt    TextType
   | Ty_Num    NumberType
   -- | The Top type, T <: Ty_Top
-  | Ty_Top 
+  | Ty_Any 
   -- | The Bottom type, Ty_Bot <: T
   | Ty_Bot 
   deriving (Eq, Generic)
@@ -43,7 +44,7 @@ data Type =
 
 data RecordType =
     HasEntry  T.Text Type
-  | RecOfSize Int
+  | WithSize Int
   | AnyRecord
   deriving (Eq, Generic)
 
@@ -51,15 +52,8 @@ data RecordType =
 data ArrayType = 
     -- | For now, indices must be >=0
     WithIndex Int Type 
-  | ArrOfSize Int
+  | WithArrLen Int
   | AnyArray
-  deriving (Eq, Generic)
-
-
-data SetType = 
-    WithElem    Type
-  | SetOfSize   Int
-  | AnySet
   deriving (Eq, Generic)
 
 
@@ -86,11 +80,9 @@ data NumberType =
     IsNumber      Number
   | GreaterThan   Number
   | LessThan      Number
-  | InRange       Number Number  -- | Inclusive
+  | Range         Number Number  -- | Inclusive
   -- | This currently only describes numbers which have a 
   -- 'Z' representation, e.g. '3.0' is not an integer
-  | Integer
-  | NonNegative
   | AnyNumber
   deriving (Eq, Generic)
 
@@ -102,7 +94,6 @@ data NumberType =
 instance Hashable Type
 instance Hashable RecordType
 instance Hashable ArrayType
-instance Hashable SetType
 instance Hashable OrType
 instance Hashable AndType
 instance Hashable TextType
@@ -112,64 +103,55 @@ instance Hashable NumberType
 
 
 ---------------------------- SHOW --------------------------
-{-
+
 instance Show Type where
   show (Ty_Rec  recTy)  = show recTy
-  show (Ty_Set  setTy ) = show setTy
-  show (Ty_Arr  arrTy ) = show arrTy
-  show (Ty_And  andTy ) = show andTy
-  show (Ty_Or   orTy  ) = show orTy
-  show (Ty_Text textTy) = show textTy
-  show (Ty_Num  numTy ) = show numTy
+  show (Ty_Arr  arrTy)  = show arrTy
+  show (Ty_And  andTy)  = show andTy
+  show (Ty_Or   orTy )  = show orTy
+  show (Ty_Txt  txtTy)  = show txtTy
+  show (Ty_Num  numTy)  = show numTy
+  show Ty_Any           = "Any"
 
 
-instance Show RecordTy where
-  show = ""
+instance Show RecordType where
+  show (HasEntry label entryTy) =
+    "HasEntry at " ++ (T.unpack label) ++ "\n of " ++ show entryTy
+  show (WithSize size)          = "WithSize " ++ show size
+  show AnyRecord                = "Record"
 
 
-instance Show ArrayTy where
-  show (IsArray arr)    = "Is " ++ show arr
-  show (WithIndex i ty) = "At " ++ show i 
-    ++ " type of " ++ show ty
-  show AnyArray         = "Array"
+instance Show ArrayType where
+  show (WithIndex idx idxTy)  =
+    "Index at " ++ show idx ++ "\n of " ++ show idxTy
+  show (WithArrLen len     )  = "Array with length " ++ show len
+  show AnyArray               = "Array"
 
 
-instance Show SetTy where
-  show (WithElem ty) = 
-    "WithElem of " ++ show ty
-  show (SetWithSize size) = 
-    "Set with size of " ++ show size
-  show (IsSet set) = "Is " ++ show set
-  show  AnySet       = "Set"
+instance Show OrType where
+  show (OrType tyList) =
+    let conTypeStrs ty1 ty2 = ty1 ++ "\nOR " ++ ty2
+    in  F.foldr1 conTypeStrs $ fmap show tyList
 
 
-instance Show TextTy where
-  show (WithTextLen len ) = "Length: " ++ show len
-  show (IsText    text) = "Is " ++ show text
-  show AnyText          = "Text"
+instance Show AndType where
+  show (AndType tyList) =
+    let conTypeStrs ty1 ty2 = ty1 ++ "\nOR " ++ ty2
+    in  F.foldr1 conTypeStrs $ fmap show tyList
 
 
-instance Show OrTy where
-  show (OrTy ty1 ty2) = 
-    show ty1 ++ "\nOR\n" ++ show ty2
+instance Show TextType where
+  show (IsText      text) = "Text: " ++ show text
+  show (WithTextLen len ) = "Text with length " ++ show len
+  show AnyText            = "Text"
 
 
-instance Show AndTy where
-  show (AndTy ty1 ty2) = 
-    show ty1 ++ "\nAND\n" ++ show ty2
-
-
-instance Show NumberTy where
+instance Show NumberType where
   show (IsNumber    num) = "Is " ++ show num
   show (GreaterThan lb ) = "Greater Than " ++ show lb
   show (LessThan    ub ) = "Lesser Than " ++ show ub
-  show (InRange  x y   ) = 
+  show (Range    x  y  ) = 
     "[" ++ show x ++ ", " ++ show y ++ "]"
-  show Even              = "Even"
-  show Odd               = "Odd"
-  show Integer           = "Integer"
-  show NonNegative       = "NonNegative"
   show AnyNumber         = "Number"
 
--}
 
