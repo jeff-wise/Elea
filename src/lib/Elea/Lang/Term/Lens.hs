@@ -1,6 +1,12 @@
 
 
-module Elea.Lang.Exp.Lens where
+module Elea.Lang.Term.Lens where
+
+
+import Elea.Prelude
+
+import qualified Data.Text as T
+
 
 
 ------------------------- LENS -----------------------------
@@ -12,7 +18,7 @@ data Lens =
   | Lens_This
 
 
-data RecordLens = AtLabel Text Lens
+data RecordLens = AtLabel T.Text Lens
 
 
 data ArrayLens = AtIndex Int Lens

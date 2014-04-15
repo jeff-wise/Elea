@@ -3,7 +3,7 @@
 module Elea.Lang.Term.Value
   ( -- * Values
     Value (..)
-  , Record (..), Array (..), Set (..)
+  , Record (..), Array (..)
   , Text (..), Number (..)
   ) where
  
@@ -13,7 +13,6 @@ import Elea.Prelude
 
 import Data.Hashable
 import qualified Data.Foldable as F
-import qualified Data.HashSet as HS
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
@@ -27,7 +26,6 @@ import GHC.Generics (Generic)
 data Value = 
     Val_Rec   Record
   | Val_Arr   Array
-  | Val_Set   Set
   | Val_Txt   Text
   | Val_Num   Number
   deriving (Eq, Generic)
@@ -41,11 +39,7 @@ data Array = Arr (Seq.Seq Value)
   deriving (Eq, Generic)
 
 
-data Set = Set (HS.HashSet Value)
-  deriving (Eq, Generic)
-
-
-newtype Text = Text
+newtype Text = Txt
   { primText  ∷ T.Text }
   deriving (Eq, Generic)
 
@@ -71,9 +65,6 @@ data DateTime = DateTime Day TimeOfDay
 -- Make these collections Hashable --
 -------------------------------------
 
-instance Hashable a ⇒ Hashable (HS.HashSet a) where
-  hashWithSalt = hashUsing HS.toList  
-
 instance Hashable a ⇒ Hashable (Seq.Seq a) where
   hashWithSalt = hashUsing F.toList  
 
@@ -88,7 +79,6 @@ instance (Hashable a, Hashable b) ⇒ Hashable (HMS.HashMap a b) where
 instance Hashable Value
 instance Hashable Record
 instance Hashable Array
-instance Hashable Set
 instance Hashable Text
 instance Hashable Number
 
@@ -102,7 +92,6 @@ instance Hashable Number
 instance Show Value where
   show (Val_Rec  rec) = show rec
   show (Val_Arr  arr) = show arr
-  show (Val_Set  set) = show set
   show (Val_Txt  txt) = show txt
   show (Val_Num  num) = show num
 
@@ -115,12 +104,8 @@ instance Show Array where
   show (Arr arr) = show arr
 
 
-instance Show Set where
-  show (Set hs) = show hs
-
-
 instance Show Text where
-  show (Text text) = show text
+  show (Txt text) = show text
 
 
 instance Show Number where

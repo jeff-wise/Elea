@@ -3,6 +3,10 @@
 Final list of TODOs
 
 
+prelude
+  add forM, mapM_, etc...
+  add fromJust
+
 array indexing start at 1?
 
 annotated sourcce code for tests?

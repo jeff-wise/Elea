@@ -5,27 +5,27 @@ module Elea.Lang.Program where
 
 
 -- | Program
--- A Program consists of force and system defintions.
 data Program = Program
-  { forceDefs   ∷  [ForceDef]
-  , systemDefs  ∷  [SystemDef]
+  { forceDefs   ∷  [ForceDefinition]
+  , systemDefs  ∷  [SystemDefinition]
+  , apDefs      ∷  [APDefinition]
   }
 
 
 
-data ForceDef = ForceDef
+data ForceDefinition = ForceDefinition
   { forceId ∷  T.Text
   , force   ∷  Force
   }
 
 
-data APDef = APDef
+data APDefinition = APDefinition
   { actnPotlId ∷  T.Text
   , actnPotl   ∷  ActionPotential
   }
 
 
-data SystemDef = SystemDef
+data SystemDefinition = SystemDefinition
   { sysId     ∷  T.Text 
   , sysAPs    ∷  [APId]
   , sysRecps  ∷  [Receptor]
@@ -39,5 +39,9 @@ install ∷ Program → IO Universe
 install p = do
 
 
-
+-- need to start processor
+--
+-- universe interace
+--
+-- for each system:
 

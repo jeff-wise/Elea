@@ -3,13 +3,11 @@
 module Elea.Lang.Term.Transformer where
 
 
-import Elea.Prelude
 
 import Elea.Lang.Term.Value
 
 
 import qualified Data.HashMap.Strict as HMS
-import qualified Data.HashSet as HS
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 
@@ -21,53 +19,39 @@ import qualified Data.Text as T
 
 data Transformer =
     Tr_Template Template
-  | Tr_Equation Equation
-  | Tr_Query    Query
+--  | Tr_Equation Equation
+ -- | Tr_Query    Query
 
 
 
 
 ----------------------- TEMPLATE --------------------------
 
-data Template = Var T_Val
-
-
-data Var a = 
-    -- | Declaration
-    D a
-    -- | Binding (to a parameter in context)
-  | B T.Text
+type Template = T_Val
 
 
 data T_Val = 
-    T_Val_Rec     T_Record
-  | T_Val_Arr     T_Array
-  | T_Val_Set     T_Set
-  | T_Val_Text    T_Text
-  | T_Val_Num     T_Number
-  | T_Val_Null
+    T_Rec   RecordT
+  | T_Arr   ArrayT
+  | T_Txt   TextT
+  | T_Num   NumberT
+  | T_Var   T.Text
 
 
-
-data T_Record = T_Rec
-  (HMS.HashMap (Var T.Text) (Var T_Val))
-
-
-data T_Array = T_Arr (Seq.Seq (Var T_Val))
+data RecordT = RecT
+  (HMS.HashMap T.Text T_Val)
 
 
-data T_Set = T_Set (HS.HashSet (Var T_Val))
+data ArrayT = ArrT (Seq.Seq T_Val)
 
 
-newtype T_Text = T_Text T.Text
+newtype TextT = TxtT Text
 
 
-data T_Number = 
-    T_Z Int 
-  | T_R Double
+newtype NumberT = NumT Number
 
 
-
+{-
 
 ----------------------- EQUATION --------------------------
 
@@ -89,4 +73,4 @@ data Equation =
 data Query = Query SystemId Type
 
 
-
+-}

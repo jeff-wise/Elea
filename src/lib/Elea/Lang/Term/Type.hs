@@ -38,7 +38,7 @@ data Type =
   -- | The Top type, T <: Ty_Top
   | Ty_Any 
   -- | The Bottom type, Ty_Bot <: T
-  | Ty_Bot 
+--  | Ty_Bot 
   deriving (Eq, Generic)
 
 
@@ -112,6 +112,7 @@ instance Show Type where
   show (Ty_Txt  txtTy)  = show txtTy
   show (Ty_Num  numTy)  = show numTy
   show Ty_Any           = "Any"
+ -- show Ty_Bot           = "Bottom"
 
 
 instance Show RecordType where
