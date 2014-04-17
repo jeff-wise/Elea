@@ -14,6 +14,7 @@ import Elea.Prelude
 import Data.Hashable
 import qualified Data.Foldable as F
 import qualified Data.HashMap.Strict as HMS
+import Data.List.Stream ((++))
 import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 
@@ -96,21 +97,23 @@ instance Show Value where
   show (Val_Num  num) = show num
 
 
+newline = "\n"
+
 instance Show Record where
-  show (Rec rec) = show rec
+  show (Rec rec) = show rec ++ newline
 
 
 instance Show Array where
-  show (Arr arr) = show arr
+  show (Arr arr) = show arr ++ newline
 
 
 instance Show Text where
-  show (Txt text) = show text
+  show (Txt text) = show text ++ newline
 
 
 instance Show Number where
-  show (Z i) = show i
-  show (R d) = show d
+  show (Z i) = show i ++ newline
+  show (R d) = show d ++ newline
 
 
 

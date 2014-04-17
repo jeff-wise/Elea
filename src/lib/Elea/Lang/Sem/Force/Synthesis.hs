@@ -20,6 +20,7 @@ import Elea.Lang.Sem.Types
 import Elea.Lang.Sem.Transform.Template
 
 import Elea.Lang.Term.Force
+import Elea.Lang.Term.System
 import Elea.Lang.Term.Transformer
 import Elea.Lang.Term.Value
 
@@ -29,7 +30,6 @@ import Control.Monad (forM, mapM_)
 
 import qualified Data.List.Stream as L
 import Data.Maybe (fromJust)
-
 
 
 
@@ -48,9 +48,9 @@ synthesize univ paramMap (Syn transformer projs) = do
 transform ∷ Universe → ParamMap → Transformer → STM Value
 transform _ paramMap transformer =
   case transformer of
-    Tr_Template temp   → return $ template paramMap temp 
---  Tr_Equation eq     → evalEquation paramMap
---  Tr_Query    query  → evalQuery findSystem paramMap
+    Tr_Template temp  → return $ template paramMap temp 
+--  Tr_Equation eq    → evalEquation paramMap
+--  Tr_Query    query → evalQuery findSystem paramMap
 
 
 
@@ -62,8 +62,8 @@ project (Univ systemMap _ effectQueue)
         (Projection lens systemId) = do
   let projValue = fromJust $ get lens value
   let targetSystem = lookupSystem systemId systemMap
-  addParticle (sysParticleDB targetSystem) (Part projValue)
-  signals ← responses (sysReceptorDB targetSystem) projValue
+  addParticle targetSystem $ ParticleDef projValue
+  signals ← reactions targetSystem projValue
   effects ← L.concat <$> forM signals
                 (\s → broadcast targetSystem s projValue)
   mapM_ (queueEffect effectQueue) effects

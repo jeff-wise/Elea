@@ -30,12 +30,23 @@ Library
     
     ghc-options:        -Wall -fno-warn-orphans -fno-warn-missing-signatures
 
-    exposed-modules:    Elea.Lang.Term.Type,
-                        Elea.Lang.Term.Value,
-                        Elea.Lang.Sem.ValueIndex,
+    exposed-modules:    Elea.Lang.Term.Force
+                        Elea.Lang.Term.Lens
+                        Elea.Lang.Term.System
+                        Elea.Lang.Term.Type
+                        Elea.Lang.Term.Value
+                        Elea.Lang.Term.Transformer
+                        Elea.Lang.Sem.Processor
+                        Elea.Lang.Sem.System
+                        Elea.Lang.Sem.ValueIndex
                         Elea.Lang.Sem.TypeIndex
+                        Elea.Lang.Sem.Types
 
     other-modules:      Elea.Prelude
+                        Elea.Lang.Term.Identifiers
+                        Elea.Lang.Sem.Lens
+                        Elea.Lang.Sem.Force.Synthesis
+                        Elea.Lang.Sem.Transform.Template
 
     build-depends:  	base ==4.6.*,
                         containers,
@@ -64,11 +75,10 @@ Executable testsuite
 
     main-is:            EleaTest/Main.hs
 
-    other-modules:      EleaTest.Prelude,
+    other-modules:      EleaTest.Prelude
                         EleaTest.Lang.Sem.ValueIndex
                         EleaTest.Lang.Sem.TypeIndex
     
-
     build-depends:      base ==4.6.*,
                         Elea,
                         tasty-hunit,
@@ -83,9 +93,23 @@ Executable testsuite
                         QuickCheck,
                         text
 
-
     ghc-options:        -Wall -fno-warn-missing-signatures
 
     extensions:         OverloadedStrings, UnicodeSyntax, TemplateHaskell, NoImplicitPrelude
 
+
+
+Executable example-basic
+
+    hs-source-dirs:     examples/basic
+    
+    main-is:            Basic.hs
+
+    build-depends:      base ==4.6.*,
+                        Elea,
+                        unordered-containers,
+                        stm,
+                        text
+
+    extensions:         OverloadedStrings, UnicodeSyntax
 

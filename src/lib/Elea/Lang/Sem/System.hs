@@ -7,6 +7,7 @@ module Elea.Lang.Sem.System where
 import Elea.Prelude
 
 import Elea.Lang.Term.Identifiers
+import Elea.Lang.Term.System
 import Elea.Lang.Term.Value
 
 import Elea.Lang.Sem.Lens
@@ -17,11 +18,11 @@ import qualified Elea.Lang.Sem.TypeIndex as TI
 
 
 import Control.Concurrent.STM
-import Control.Monad (guard, forM)
+import Control.Monad (when, guard, forM, forM_)
 
 import qualified Data.HashMap.Strict as HMS
 import qualified Data.HashSet as HS
-import qualified Data.List.Stream as L
+import Data.List.Stream as L (all, (++))
 import Data.Maybe (fromJust)
 
 
@@ -58,7 +59,7 @@ broadcast system signal value = do
 -- transaction returns a 'Reaction'
 send ∷ Signal → Value → ActionPotential → STM (Maybe Effect)
 send signal value
-     (AP _ signals eventClass eventMapVar reactions) = do
+     (AP _ signals eventClass eventMapVar forces) = do
   eventId ← getEventId
   eventVar ← getEventVar eventId
   event ← readTVar eventVar
@@ -67,7 +68,7 @@ send signal value
     -- Complete: delete event variable, return parameters
     Left  paramMap → do 
       modifyTVar eventMapVar $ HMS.delete eventId
-      return $ Just $ Effect paramMap reactions
+      return $ Just $ Effect paramMap forces
     -- Incomplete: Write back into variable
     Right event'   → do
       writeTVar eventVar event' 
@@ -95,11 +96,11 @@ send signal value
 
 
     updateEvent ∷ Event → Either ParamMap Event
-    updateEvent eventHM =
-      let eventHM' = HMS.insert signal (Just value) eventHM
-      in  if L.all isJust $ HMS.elems eventHM'
-            then Left $ HMS.map fromJust eventHM'
-            else Right eventHM'
+    updateEvent event =
+      let event' = HMS.insert signal (Just value) event
+      in  if L.all isJust $ HMS.elems event'
+            then Left $ HMS.map fromJust event'
+            else Right event'
 
 
 
@@ -108,10 +109,11 @@ send signal value
 
 -- | Add a particle to a system, provided the particle
 -- has a unique value
-addParticle ∷ TVar ParticleDB → Particle → STM ()
-addParticle particleDBVar part@(Part partVal) = do
+addParticle ∷ System → ParticleDefinition → STM ()
+addParticle system (ParticleDef partVal) = do
+  let particleDBVar = sysPartDbVar system
   particleDB ← readTVar particleDBVar
-  case insertParticle particleDB of
+  case updateParticleDB particleDB of
     Just particleDB' → writeTVar particleDBVar particleDB'
     Nothing          → throwSTM DuplicateParticle
 
@@ -120,32 +122,88 @@ addParticle particleDBVar part@(Part partVal) = do
     -- | Insert a particle into the database.
     -- If particle of exact same value already exists, this
     -- function returns Nothing.
-    insertParticle ∷ ParticleDB → Maybe ParticleDB
-    insertParticle (ParticleDB valIdx partHM) = do
+    updateParticleDB ∷ ParticleDB → Maybe ParticleDB
+    updateParticleDB (ParticleDB valIdx partHM) = do
       guard $ not $ HMS.member partVal partHM
       return $ ParticleDB
         (VI.insert partVal valIdx )
-        (HMS.insert partVal part partHM)
+        (HMS.insert partVal (Part partVal) partHM)
 
 
 
 
----------------------- RESPONSES ------------------------
+----------------------- ADD RECEPTOR -----------------------
+
+-- This will likely be changed a lot in the next version,
+-- so for now it is pretty much the same as add particle
+
+addReceptor ∷ System → ReceptorDefintion → STM ()
+addReceptor system (ReceptorDef recpId recpTy) = do
+  let receptorDBVar = sysRecpDbVar system
+  receptorDB ← readTVar receptorDBVar
+  case updateReceptorDB receptorDB of
+    Just receptorDB' → writeTVar receptorDBVar receptorDB'
+    Nothing          → throwSTM DuplicateParticle
+
+  where
+
+    -- | Insert a particle into the database.
+    -- If particle of exact same value already exists, this
+    -- function returns Nothing.
+    updateReceptorDB ∷ ReceptorDB → Maybe ReceptorDB
+    updateReceptorDB (ReceptorDB typIdx recpMap) = do
+      guard $ not $ HMS.member recpTy recpMap
+      return $ ReceptorDB
+        (TI.insert recpTy typIdx)
+        (HMS.insert recpTy (Recp recpId) recpMap)
+
+
+
+
+----------------------- ADD RECEPTOR -----------------------
+
+
+addActionPotential ∷ System → APDefinition → STM ()
+addActionPotential system (APDef apId signals eventClass forces) = do
+  apMap ← readTVar $ sysAPMapVar system
+  -- If an AP with the same ID already exists, abort
+  when (HMS.member apId apMap) $
+    throwSTM DuplicateActionPotential
+  -- Index the new AP by the signals it listens for
+  forM_ signals (\signal →
+      -- Associate this AP with each signal in the signal index
+      modifyTVar (sysSigIdxVar system) $
+        HMS.insertWith (++) signal [apId] 
+    )
+  newEventMapVar ← newTVar HMS.empty
+  let newAP = AP { apActive      = True
+                 , apSignals     = signals
+                 , apEventClass  = eventClass
+                 , apEventMapVar = newEventMapVar
+                 , apReactions   = forces
+                 }
+  modifyTVar (sysAPMapVar system) (HMS.insert apId newAP)
+
+
+
+
+------------------------ RESPONSES -------------------------
 
 -- | Responses
 -- Given a value, returns the signals which are triggered
 -- as a result of that value being created in the same system.
-responses ∷ TVar ReceptorDB → Value → STM [Signal]
-responses receptorDBVar value = do
+reactions ∷ System → Value → STM [Signal]
+reactions system value = do
+  let receptorDBVar = sysRecpDbVar system
   receptorDB ← readTVar receptorDBVar
-  return $ responses' receptorDB
+  return $ reactions' receptorDB
       
   where
 
-    responses' ∷ ReceptorDB → [Signal]
-    responses' (ReceptorDB tyIdx recpMap) =
+    reactions' ∷ ReceptorDB → [Signal]
+    reactions' (ReceptorDB tyIdx recpMap) =
       let getSignal ty =  case fromJust $ HMS.lookup ty recpMap of
                             (Recp signal) → signal
-      in  L.map getSignal $ HS.toList $ TI.lookup value tyIdx
+      in  fmap getSignal $ HS.toList $ TI.lookup value tyIdx
 
 

@@ -19,9 +19,10 @@ import Elea.Lang.Sem.ValueIndex as VI
 
 
 import Control.Exception
-import Control.Concurrent.STM (STM, TVar, TQueue, writeTQueue)
+import Control.Concurrent.STM
 
 import qualified Data.HashMap.Strict as HMS
+import Data.List ((++))
 import Data.Maybe (fromJust)
 import Data.Typeable
 
@@ -31,11 +32,20 @@ import Data.Typeable
 
 
 data System = Sys
-  { sysParticleDB ∷ TVar ParticleDB
-  , sysReceptorDB ∷ TVar ReceptorDB
+  { sysPartDbVar  ∷ TVar ParticleDB
+  , sysRecpDbVar  ∷ TVar ReceptorDB
   , sysSigIdxVar  ∷ TVar SignalIndex
   , sysAPMapVar   ∷ TVar ActionPotentialMap
   }
+
+
+
+newSystem ∷ STM System
+newSystem = Sys
+  <$> (newTVar newParticleDB)
+  <*> (newTVar newReceptorDB)
+  <*> (newTVar HMS.empty)
+  <*> (newTVar HMS.empty)
 
 
 
@@ -173,6 +183,8 @@ type ForceMap     = HMS.HashMap ForceId Force
 type EffectQueue  = TQueue Effect
 
 
+newEffectQueue ∷ STM EffectQueue
+newEffectQueue = newTQueue
 
 
 
@@ -183,12 +195,17 @@ type ParamMap = HMS.HashMap Signal Value
 -- | Effect
 data Effect = Effect ParamMap [ForceId]
 
+instance Show Effect where
+  show (Effect paramMap forces) =
+    "Effect:\n" ++ show paramMap ++ "\n" ++ show forces
 
 
 data SystemException =
     DuplicateParticle
   | ValueNotInstanceOfEvent
+  | DuplicateActionPotential
   deriving (Show, Typeable)
 
 
 instance Exception SystemException
+

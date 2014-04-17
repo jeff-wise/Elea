@@ -7,6 +7,9 @@ prelude
   add forM, mapM_, etc...
   add fromJust
 
+
+arrange as library. expose term and sem modules top level
+
 array indexing start at 1?
 
 annotated sourcce code for tests?

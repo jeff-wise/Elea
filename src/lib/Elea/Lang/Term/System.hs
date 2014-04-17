@@ -24,8 +24,12 @@ import Elea.Lang.Term.Type
 
 
 
-data APDefinition = APDef [Signal] EventClass [ForceId]
-
+data APDefinition =
+  APDef
+    ActionPotentialId
+    [Signal]
+    EventClass
+    [ForceId]
 
 
 
@@ -38,12 +42,7 @@ type EventClass = Lens
 
 
 
-
-
 data ReceptorDefintion = ReceptorDef ReceptorId Type
-
-
-
 
 
 
