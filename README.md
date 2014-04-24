@@ -2,6 +2,7 @@
 
 *Preliminary notes* on the language design.
 
+
 ## Purpose
 
 The programming process may be deconstructed into two independent processes:
@@ -104,9 +105,59 @@ course, given some specification, these execution properties could be tweaked.
 Then some specification could be run in different contexts without modifying it.
 In most current software, this separation is not pragmatic. But it is ideal.
 
+
 ### Naturality
 
+The intent of the language is to take advantage of human intuition for reasoning
+about the behavior of structures and transformations. People “program” in the
+real world everyday, yet programming in the world of computing is still very
+difficult. There are learning curves to understand the idioms of computing, and
+in addition, the level of abstraction is still much lower than it could be.
+Knowledge of computer science is still necessary to build non-trivial software,
+but it doesn’t need to be. Personally, I think computer science should be a
+common curriculum, but given a huge population of diverse interests and varying
+backgrounds with varying qualities of education and social status, software
+development should be possible independent of all of these factors. Languages
+such as Haskell and Agda succeed by abstracting computation to the level of
+mathematics. This enables programming design patterns to simply be
+instantiations of well-founded mathematical principles, like functors or
+monoids. 
+
+Elea intends to abstract computation to the level of human thought processes. In
+philosophy of the mind, these processes are often referred to with a folk
+prefix, such as folk-physics are folk-psychology, to refer to a colloquial
+understanding of complex processes. For the most part, these casual
+understandings are very effective. Most people don’t understand the
+equations/laws of physics, but they are still very adept at building things,
+moving things, and making predictions about events. Here we are interested in
+folk-computation, the way in which someone normally thinks about data and the
+ways in which it can be modified. Elea operates at that level, to the best of
+its ability.
+
+Living is essentially a computational experience. All human constructions are
+programs which transform real world input to real world output. These
+constructions could be physical such as a vehicle or a drug, or even
+sociological, such as a company or project. Either way, most people are adept at
+constructing computational processes, without knowing it. Therefore, Elea
+intends utlimately to be more than a language. It will be a framework for any
+type of representational construction, that is, a structure which is intended to
+operate over properties of real world entities, but not on those real world
+entities directly. [Needs expanding]
+
+
 ### Simplicity
+
+Simplicity plays an important role by allowing computer augmentation to play a
+larger role in software development. Because both the language components and
+its semantics are simple, there are opportunties for easy analysis of the
+programs. Programming can only be made simple to a point, but if its designed in
+a way such that programs themselves are easily subject to analysis, we can
+always write procedures to assist users in understanding their own programs.
+Large programs are difficult because no one can fit into their head a picture of
+everything going on at once. Computers can provide summaries of a program’s
+behavior, from different perspectives, to allow programmers to quickly
+understand the programmable environment they are in the process of modifying.
+
 
 ### Scalability
 
@@ -217,12 +268,14 @@ potential may have multiple concurrent instances, called events. Each event
 waits on its signals before activating. Events are sorted/mapped by the values of the
 signals.
 
+
+
 Like receptors, action potentials are named after a biological mechanism. The
 corresponce is loose, refering mostly to the idea of a buildup of *potential*
 and eventually reaching a threshold whereby something *interesting* happens. In
 this case, some forces.
 
-diagram
+
 
 ### System
 
@@ -242,6 +295,8 @@ are determined by the shape/structure of received particles.
 
 
 ## Dynamics
+
+![System](docs/image/system.png?raw=true)
 
 When a particle is created in a system, the receptors of that system may react
 to it. A receptor's behavior is determined by the particle's shape (type). If
@@ -277,6 +332,7 @@ received concurrently, so they events should be processed concurrent. Events are
 mapped by the specified class, which is just a reference to part of the signal
 value.
 
+![Event Maps](docs/image/events.png?raw=true)
 
 The most important undecided aspect of the semantics is currently the memory
 management model. Still researching some ideas for an explicit model, but one
@@ -294,6 +350,13 @@ simply by adding receptors and tweaking action potentials, and adding any new
 forces to them if necessary. Dependencies still exist and will have to be
 resolved if changed, but it is easier to redirect signals and redesign receptor
 forms than to modify modules and rearrange functions
+
+I am still figuring how to program with this model, but the following diagram is
+an example of the general idea.
+
+![Reactive Programming Example](docs/image/reactive.png?raw=true)
+
+Now imagine making modifications to this game.
 
 In most recent programming langauges, the greatest improvement to program
 maintainability has been through program verification (strong typing). Once
