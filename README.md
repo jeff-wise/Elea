@@ -5,6 +5,14 @@
 
 ## Purpose
 
+Elea focuses on these langauge properties:
+
+ * Naturality
+ * Simplicity
+ * Scalability
+ * Verifiability
+
+
 The programming process may be deconstructed into two independent processes:
 
  * Specification
@@ -57,9 +65,11 @@ in design, because they aren't forced into any particular computational model.
 
 Consider two recipes:
 
+List 1
  1. Chop vegetables.
  2. Fry vegetables.
 
+List 2
  1. Pick up knife
  2. Heat a pan.
  3. Place knife over vegetables, press downwards, lift up, move the knife over.
@@ -109,7 +119,7 @@ In most current software, this separation is not pragmatic. But it is ideal.
 ### Naturality
 
 The intent of the language is to take advantage of human intuition for reasoning
-about the behavior of structures and transformations. People “program” in the
+about the behavior of structures and transformations. People "program" in the
 real world everyday, yet programming in the world of computing is still very
 difficult. There are learning curves to understand the idioms of computing, and
 in addition, the level of abstraction is still much lower than it could be.
@@ -127,7 +137,7 @@ Elea intends to abstract computation to the level of human thought processes. In
 philosophy of the mind, these processes are often referred to with a folk
 prefix, such as folk-physics are folk-psychology, to refer to a colloquial
 understanding of complex processes. For the most part, these casual
-understandings are very effective. Most people don’t understand the
+understandings are very effective. Most people don't understand the
 equations/laws of physics, but they are still very adept at building things,
 moving things, and making predictions about events. Here we are interested in
 folk-computation, the way in which someone normally thinks about data and the
@@ -154,7 +164,7 @@ programs. Programming can only be made simple to a point, but if its designed in
 a way such that programs themselves are easily subject to analysis, we can
 always write procedures to assist users in understanding their own programs.
 Large programs are difficult because no one can fit into their head a picture of
-everything going on at once. Computers can provide summaries of a program’s
+everything going on at once. Computers can provide summaries of a program's
 behavior, from different perspectives, to allow programmers to quickly
 understand the programmable environment they are in the process of modifying.
 
@@ -173,7 +183,7 @@ understand the programmable environment they are in the process of modifying.
 
 ### Values
 
-There is only one type of value in Elea (values are untyped or uni-typed). This
+There is only one type of `value` in Elea (values are untyped or uni-typed). This
 is similar to JSON in Javascript and the structure of values in Elea is very
 similar.
 
@@ -200,24 +210,25 @@ datetime value will be included soon as a default.
 
 ### Lens
 
-A lens is a reference to a part of a value. They are the primary mechanism for
-*destructing* values. They are analog
+A `lens` is a reference to a part of a `value`. They are the primary mechanism for
+*destructing* `value`s. They are dual to templates which *construct* `value`s by
+filling in holes in a structure, rather than cutting out a hole.
 
 ### Force
 
-A force is some type of system modification. 
+A `force` is some type of system modification. [To be expanded]
 
 #### Synthesis
 
-For now the main force is Synthesis. Synthesis is a process of composing
-multiple values into a new value. Parts of the new value are then mapped into
-some systems. Values are transformed by different kinds of Transformers.
+For now the main `force` is `Synthesis`. Synthesis is a process of composing
+multiple `value`s into a new `value`. Parts of the new `value` are then mapped into
+some `system`s. `Value`s are transformed by different kinds of `Transformer`s.
 
 
 ### Transformer
 
-Transformers are functions, they take in multiple input values and return a
-single output value. Transformers represent general types of computations. For
+`Transformer`s are functions, they take in multiple input `value`s and return a
+single output `value`. `Transformer`s represent general types of computations. For
 example, if one wanted to write a mathematical function, then one would use the
 Equation transformer, which is just a way to specify an equation with
 mathematical operations. This way, users can write domain specific data
@@ -262,19 +273,16 @@ Receptors are inspired by biochemical receptors.
 ### Action Potential
 
 Action Potentials are similar to functions in other languages. An action
-potential waits on multiple signals and then it is **activated**. When an action
-potential is activated, it causes a set of forces to be evaluated. A single action
-potential may have multiple concurrent instances, called events. Each event
-waits on its signals before activating. Events are sorted/mapped by the values of the
-signals.
-
-
+potential waits on multiple signals, and then it is **activated**. When an
+action potential is activated, it causes a set of forces to be evaluated. A
+single action potential may have multiple concurrent instances, called events.
+Each event waits on its signals before activating. Events are sorted/mapped by
+the values of the signals.
 
 Like receptors, action potentials are named after a biological mechanism. The
 corresponce is loose, refering mostly to the idea of a buildup of *potential*
 and eventually reaching a threshold whereby something *interesting* happens. In
 this case, some forces.
-
 
 
 ### System
@@ -320,17 +328,17 @@ arise out of simple and readable sets of inference rules.
 Signals are sent to the action potentials that receive them. Action potentials
 at runtime function like concurrent procedures which have as parameters
 synchronizing variables. When all of a procedure's parameters have been *filled*
-then it is executed. Parameters are identified as signal names and are
-populated by the value which triggered the signal. Therefore, each time a
-procedure runs, a new pariticle exists for each parameter of the procedure.
+it is executed. Parameters are identified as signal names and are populated by
+the value which triggered the signal. Therefore, each time a procedure runs, a
+new pariticle exists for each parameter of the procedure.
 
-These procedures are called events and are processed concurrent per action
+These procedures are called events and are processed concurrently per action
 potential. Events are multiplexed by a pre-defined event class, since the same
 kind of event could occur for different reasons simultaneously. Suppose an event
-is related to some user information. Information about multiple users could be
-received concurrently, so they events should be processed concurrent. Events are
-mapped by the specified class, which is just a reference to part of the signal
-value.
+is related to users. Information about multiple users could be received
+concurrently, so their events should be processed concurrent. Events are mapped
+by the specified `class`, which is just a reference (a `lens`) to part of the
+signal value. In this case the class is the value at the label *user*.
 
 ![Event Maps](docs/image/events.png?raw=true)
 
