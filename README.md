@@ -2,16 +2,29 @@
 
 *Preliminary notes* on the language design.
 
+Many language constructs are still prototypical. Many explanations of constructs
+which are likely to stay are still weak and need stronger elucidation,
+visualization and formalization.
+
+Eventually, the concepts in this document will be transformed
+into a more formal language and another document will be created to serve as a
+tutorial for how to use the language. The tutorial will focus on what the
+concepts mean and how to use them effectively, while the formal specification
+will define clearly what the concepts are and why they exist as such.
+
 
 ## Purpose
 
-Elea focuses on these langauge properties:
+Elea is designed with a focus on these language properties:
 
+ * Declarability (better word?)
  * Naturality
  * Simplicity
  * Scalability
  * Verifiability
 
+
+### Declarability
 
 The programming process may be deconstructed into two independent processes:
 
@@ -39,8 +52,12 @@ As an example of how translation is over-emphasized, examine the idea that one
 day we could speak to a computer about the program we want, and it would build
 that program for us. This is impossible. Any program that is even a little
 interesting would be far too complex to declare verbally. In fact, the act of
-*declaring* any program is equivalent to constructing that program. The
-difference is in the execution of that program.
+*declaring* any program is equivalent to constructing that program. Thus
+translation is not needed, given that some program declaration could be executed
+immediately. The point is that declaring a program is much harder that making in
+executable. But with modern techniques, a lot of the declaration is done at
+translation time. Requirements are never complete enough. What is needed are
+executable specifications.
 
 If the specification is complete, then it may be executed by any means --
 perhaps a person manually performs the interpretation. The program could be like
@@ -57,48 +74,32 @@ admit that the difficultly in programming is not primarily in execution, but in
 just writing that program out. Without a specification, there is nothing to
 execute.
 
-Because declarative languages focus in specifying what and not how, they do not
+Because declarative languages focus on specifying what and not how, they do not
 conflate how to execute a program and what the program does (as much).
 Complexity becomes easier to handle. Composition is a more powerful tool.
 Well-defined and elegant mathematical abstractions play a more fundamental role
 in design, because they aren't forced into any particular computational model.
 
-Consider two recipes:
-
-Recipe 1
- 1. Chop vegetables.
- 2. Fry vegetables.
-
-Recipe 2
- 1. Pick up knife
- 2. Heat a pan.
- 3. Place knife over vegetables, press downwards, lift up, move the knife over.
-    Repeat.
- 4. Place oil in pan.
- 5. Pick up vegetables.
- 6. Put vegetables in pan.
-
-Any professional chef could be given the first list, and follow the steps. The
-chef would do so idiosyncratically, according to his or her personal techniques,
-experience, styles, and tastes. Given the second list, most chefs might be
-frustrated. It's almost insulting that it tries to tell the chef *how* to do her
-job, as opposed to what to do. The job could be done many ways with similar
-results.  The essense of fried vegetables is in the chopping and the pan, not
-the movements of the knife, the hands, or the placement of the vegetables.
-
-The key point is that we abstract over the execution of the cooking and focus on
-the components of the result. We need vegetables and frying. How those
-components are executed is a function of themselves, but is still a function, it
-may vary and is determined by the components, not vice versa. When working with
-computation, we should focus on the same types of general abstractions. When
-designing something, worry only about the composition of the processes and data,
-not how in the real world we instantiate those processes and data. The real
-world is **very** important, but is necessarily a secondary concern.
+[ TODO
+Need to figure out precisely what the difference between what and how is.
+Partial answer. **What** is an abstract specification of some program. The
+**how** is a function which maps any abstract specification into a real world
+process, such that all of the data transformations in the abstract program
+(domain, relation, codomain) are preserved in the real world. This assumes also
+that the domains and codomains exist in the real world and that the relations
+are "possible".  What's left is to clearly define what an "abstract
+specification" is. Is anything really abstract? By thinking about it, are we not
+executing it in our heads?  Also what does "possible" mean here in respect to
+relations; that they are maps which are derivable by known laws of physics?
+]
 
 A specification is a real description of some data transformation process, but
 it does not transform data. In order to transform data, the specification must
-be made executable. A primary goal in developing programming languages is to
-make the specification form as close to the executable form as possible.
+be made executable. The problem is that most programming languages are not
+suitable for specification. The programmer must translate some form of
+non-executable specification into an executable specification (the source code).
+In an idea world the specification language, which could be used by anyone, is
+also an executable language.
 
 The largest risk in software development is incorrect requirements. If one could
 write executable specifications, then this risk would be nearly non-existent,
@@ -110,10 +111,11 @@ the real world resources to support those.
 
 There will always be some translation required. Execution requires one to take
 into account the environment and available resources. Execution time and space
-are always issues, as are the underlying data structures and algorithms. Of
-course, given some specification, these execution properties could be tweaked.
-Then some specification could be run in different contexts without modifying it.
-In most current software, this separation is not pragmatic. But it is ideal.
+are always issues, as are the underlying data structures and algorithms. Some
+programs are even intended to be only executed in a certain manner. Of course,
+given some specification, these execution properties could be tweaked.  Then
+some specification could be run in different contexts without modifying it.  In
+most current software, this separation is not pragmatic. But it is ideal.
 
 
 ### Naturality
@@ -183,7 +185,7 @@ understand the programmable environment they are in the process of modifying.
 
 ### Values
 
-There is only one type of `value` in Elea (values are untyped or uni-typed). This
+There is only one type of value in Elea (values are untyped or uni-typed). This
 is similar to JSON in Javascript and the structure of values in Elea is very
 similar.
 
@@ -207,29 +209,52 @@ datetime value will be included soon as a default.
 
 ### Types
 
-`Type`s are distinct from `values`
+Types in Elea describe Elea values. They are distinct from the values that
+inhabit particles, in that they do not represent data in the application, but
+only properties of that data.
+
+The type system of Elea is like a DSL at the type level of the language. Values
+describe what data exists in the language, but types control how that data may
+be transformed. Types may be parameterized by values and types. Unlike most
+languages, types are actually dynamic constructs. They are not erased at
+compilation because they decide the behavior of programs.
+
+The properties of a program and how it behaves is the same thing. Using types in
+this manner allows users to declare program behavior and at the same time
+document its properties. If a program behaves in a certain way, we *know* that
+it must have cetain properties. Because of this it is more intuitive to write
+programs to calculate the behavior of other programs (to be expanded). 
+
+Types are still a major issue and the current focus. The entire story is
+complicated, as is the case with dependent types. The main points in the story
+so far are that values are untyped, types are *dynamic* verifcation AND logic
+constructs, and that the reactive nature of data transformation in Elea allows
+logic and verification to be done at the same time in a natural way.
+
 
 ### Lens
 
-A `lens` is a reference to a part of a `value`. They are the primary mechanism for
-*destructing* `values`. They are dual to templates which *construct* `values` by
+A lens is a reference to a part of a value. They are the primary mechanism for
+*destructing* values. They are dual to templates which *construct* values by
 filling in holes in a structure, rather than cutting out a hole.
 
 ### Force
 
-A `force` is some type of system modification. [To be expanded]
+A force is some type of system modification. [To be expanded]
 
 #### Synthesis
 
-For now the main `force` is `Synthesis`. Synthesis is a process of composing
-multiple `value`s into a new `value`. Parts of the new `value` are then mapped into
-some `systems`. `Values` are transformed by different kinds of `Transformers`.
+For now the main force is Synthesis. Synthesis is a process of composing
+multiple values into a new value. Parts of the new value are then mapped into
+some systems. Values are transformed by different kinds of Transformers.
+
+[Need better explanation. This is a very fundamental concept]
 
 
 ### Transformer
 
-`Transformers` are functions, they take in multiple input `values` and return a
-single output `value`. `Transformers` represent general types of computations. For
+Transformers are functions, they take in multiple input values and return a
+single output value. Transformers represent general types of computations. For
 example, if one wanted to write a mathematical function, then one would use the
 Equation transformer, which is just a way to specify an equation with
 mathematical operations. This way, users can write domain specific data
@@ -257,16 +282,16 @@ visible to receptors.
 
 ### Particle
 
-For now `particles` are just wrappers around `values`. They represent any data in
-the `system`.
+For now particles are just wrappers around values. They represent any data in
+the system.
 
 ### Receptor
 
-`Receptors` represent the logic in an Elea program. They are more or less
-wrappers around `types`. A receptor is **triggered** when a particle in the same
-`system` is created and that particle's value is of the type of the receptor.
-The `receptor` fires a `signal`, which is sent to relevant `action potentials`,
-indicating that a value of the `receptor's` `type` was created. The created value is
+Receptors represent the logic in an Elea program. They are more or less
+wrappers around types. A receptor is **triggered** when a particle in the same
+system is created and that particle's value is of the type of the receptor.
+The receptor fires a signal, which is sent to relevant action potentials,
+indicating that a value of the receptor's type was created. The created value is
 associated with the signal.
 
 Receptors are inspired by biochemical receptors.
@@ -338,7 +363,7 @@ potential. Events are multiplexed by a pre-defined event class, since the same
 kind of event could occur for different reasons simultaneously. Suppose an event
 is related to users. Information about multiple users could be received
 concurrently, so their events should be processed concurrent. Events are mapped
-by the specified `class`, which is just a reference (a `lens`) to part of the
+by the specified class, which is just a reference (a lens) to part of the
 signal value. In this case the class is the value at the label *user*.
 
 ![Event Maps](docs/image/events.png?raw=true)
@@ -375,5 +400,5 @@ program modification.
 
 ## Statics/Verification
 
-
+In progress...
 
