@@ -364,7 +364,7 @@ kind of event could occur for different reasons simultaneously. Suppose an event
 is related to users. Information about multiple users could be received
 concurrently, so their events should be processed concurrent. Events are mapped
 by the specified class, which is just a reference (a lens) to part of the
-signal value. In this case the class is the value at the label *user*.
+signal value. In this case the class is the value at the label *player*.
 
 ![Event Maps](docs/image/events.png?raw=true)
 
