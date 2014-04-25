@@ -65,11 +65,11 @@ in design, because they aren't forced into any particular computational model.
 
 Consider two recipes:
 
-List 1
+Recipe 1
  1. Chop vegetables.
  2. Fry vegetables.
 
-List 2
+Recipe 2
  1. Pick up knife
  2. Heat a pan.
  3. Place knife over vegetables, press downwards, lift up, move the knife over.
@@ -207,11 +207,12 @@ datetime value will be included soon as a default.
 
 ### Types
 
+`Type`s are distinct from `values`
 
 ### Lens
 
 A `lens` is a reference to a part of a `value`. They are the primary mechanism for
-*destructing* `value`s. They are dual to templates which *construct* `value`s by
+*destructing* `values`. They are dual to templates which *construct* `values` by
 filling in holes in a structure, rather than cutting out a hole.
 
 ### Force
@@ -222,13 +223,13 @@ A `force` is some type of system modification. [To be expanded]
 
 For now the main `force` is `Synthesis`. Synthesis is a process of composing
 multiple `value`s into a new `value`. Parts of the new `value` are then mapped into
-some `system`s. `Value`s are transformed by different kinds of `Transformer`s.
+some `systems`. `Values` are transformed by different kinds of `Transformers`.
 
 
 ### Transformer
 
-`Transformer`s are functions, they take in multiple input `value`s and return a
-single output `value`. `Transformer`s represent general types of computations. For
+`Transformers` are functions, they take in multiple input `values` and return a
+single output `value`. `Transformers` represent general types of computations. For
 example, if one wanted to write a mathematical function, then one would use the
 Equation transformer, which is just a way to specify an equation with
 mathematical operations. This way, users can write domain specific data
@@ -256,17 +257,17 @@ visible to receptors.
 
 ### Particle
 
-For now particles are just wrappers around values. They represent any data in
-the system.
+For now `particles` are just wrappers around `values`. They represent any data in
+the `system`.
 
 ### Receptor
 
-Receptors represent the logic in an Elea program. They are more or less wrappers
-around types. A receptor is **triggered** when a particle in the same system is
-created and that particle's value is of the type of the receptor. The receptor
-fires a signal, which is sent to relevant action potentials, indicating that a
-value of the receptor's type was created. The created value is associated with
-the signal.
+`Receptors` represent the logic in an Elea program. They are more or less
+wrappers around `types`. A receptor is **triggered** when a particle in the same
+`system` is created and that particle's value is of the type of the receptor.
+The `receptor` fires a `signal`, which is sent to relevant `action potentials`,
+indicating that a value of the `receptor's` `type` was created. The created value is
+associated with the signal.
 
 Receptors are inspired by biochemical receptors.
 
@@ -364,7 +365,7 @@ an example of the general idea.
 
 ![Reactive Programming Example](docs/image/reactive.png?raw=true)
 
-Now imagine making modifications to this game.
+Now imagine making modifications to this game. [To be expanded]
 
 In most recent programming langauges, the greatest improvement to program
 maintainability has been through program verification (strong typing). Once
