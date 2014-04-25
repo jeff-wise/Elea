@@ -361,10 +361,11 @@ new pariticle exists for each parameter of the procedure.
 These procedures are called events and are processed concurrently per action
 potential. Events are multiplexed by a pre-defined event class, since the same
 kind of event could occur for different reasons simultaneously. Suppose an event
-is related to users. Information about multiple users could be received
-concurrently, so their events should be processed concurrent. Events are mapped
-by the specified class, which is just a reference (a lens) to part of the
-signal value. In this case the class is the value at the label *player*.
+is related to players. Information about multiple players could be received
+concurrently, so player events should be processed concurrently. Events are
+mapped by the specified class, which is just a reference (a lens) to part of the
+signal value (a player value). In the diagram below, the class is the value at
+the label *player*.
 
 ![Event Maps](docs/image/events.png?raw=true)
 
