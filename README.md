@@ -279,12 +279,13 @@ this case, some forces.
 
 ### System
 
-Systems in Elea are similar in some ways to classes in Java. They represent some
-domain which stores and reacts to data. The systems are pre-defined entities,
-which are mostly static except for their particles. When the module/package
-system is more well-defined, it will be clear that systems are active processes.
-They may exist on a separate server, or function as servers or databases or
-processing engines.
+Systems in Elea are similar in some ways to classes in Java. They represent
+some domain which stores and reacts to data, possible encapsulating some inner
+state and side effects. The systems are pre-defined entities, which are mostly
+static except for their particles. When the module/package system is more
+well-defined, it will be clear that systems are active processes.  They may
+exist on a separate server, or function as servers or databases or processing
+engines.
 
 A system is like a cell that is part of a larger entity. It has an isolated
 interior, such that signals do not propogate outward. It also has a permeable

@@ -30,25 +30,26 @@ Library
     
     ghc-options:        -Wall -fno-warn-orphans -fno-warn-missing-signatures
 
-    exposed-modules:    Elea.Lang.Term.Force
+    exposed-modules:    Elea.Lang.Types
+                        Elea.Lang.Term.Force
+                        Elea.Lang.Term.Identifiers
                         Elea.Lang.Term.Lens
                         Elea.Lang.Term.System
                         Elea.Lang.Term.Type
                         Elea.Lang.Term.Value
                         Elea.Lang.Term.Transformer
+                        Elea.Lang.Sem.Force.Synthesis
+                        Elea.Lang.Sem.Lens
                         Elea.Lang.Sem.Processor
                         Elea.Lang.Sem.System
                         Elea.Lang.Sem.ValueIndex
+                        Elea.Lang.Sem.Transform.Template
                         Elea.Lang.Sem.TypeIndex
                         Elea.Lang.Sem.Types
 
     other-modules:      Elea.Prelude
-                        Elea.Lang.Term.Identifiers
-                        Elea.Lang.Sem.Lens
-                        Elea.Lang.Sem.Force.Synthesis
-                        Elea.Lang.Sem.Transform.Template
 
-    build-depends:  	base ==4.6.*,
+    build-depends:  	base >=4.6.0,
                         containers,
                         unordered-containers,
                         text,
@@ -56,7 +57,6 @@ Library
                         either,
                         bytestring,
                         stream-fusion,
-                        time,
                         lens,
                         hashable,
                         mtl,
@@ -79,7 +79,7 @@ Executable testsuite
                         EleaTest.Lang.Sem.ValueIndex
                         EleaTest.Lang.Sem.TypeIndex
     
-    build-depends:      base ==4.6.*,
+    build-depends:      base >=4.6.0,
                         Elea,
                         tasty-hunit,
                         tasty,
@@ -105,7 +105,7 @@ Executable example-basic
     
     main-is:            Basic.hs
 
-    build-depends:      base ==4.6.*,
+    build-depends:      base >=4.6.0,
                         Elea,
                         unordered-containers,
                         stm,

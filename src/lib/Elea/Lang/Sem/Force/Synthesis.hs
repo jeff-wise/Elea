@@ -57,15 +57,13 @@ transform _ paramMap transformer =
 
 -- | Project
 project ∷ Universe → Value → Projection → STM ()
-project (Univ systemMap _ effectQueue)
-        value
-        (Projection lens systemId) = do
+project univ value (Projection lens systemId) = do
   let projValue = fromJust $ get lens value
-  let targetSystem = lookupSystem systemId systemMap
+  let targetSystem = lookupSystem systemId univ
   addParticle targetSystem $ ParticleDef projValue
   signals ← reactions targetSystem projValue
   effects ← L.concat <$> forM signals
                 (\s → broadcast targetSystem s projValue)
-  mapM_ (queueEffect effectQueue) effects
+  mapM_ (queueEffect univ) effects
 
 

@@ -1,5 +1,9 @@
 
 
+-- | Value Index
+--
+-- A datastructure which stores values and automatically indexes specific
+-- properties so that they may be queried by 'Type'. 
 module Elea.Lang.Sem.ValueIndex (
     ValueIndex    
   , newValueIndex
@@ -78,9 +82,15 @@ data ValueIndex = ValueIndex
 -- Each node indexes a value by different attributes, so that
 -- searches for values with specific properties can on average
 -- proceed very fast. In essence, we are throwing space/memory
--- away to get fast lookups, which will be very important for 
--- queries. We assume space is cheap, but the amount of indexing
--- can always be tuned later.
+-- away to get fast lookups.
+--
+-- By default the Value Index is always in memory, so space may
+-- be an issue. Later, there will be settings to tune the amount
+-- and/or methods of indexing. Automatic optimizations are always
+-- possible, e.g. if a certain type is never planned to be used,
+-- then its associated properties do not need to be indexed.
+
+
 data Node_Value = Node_Value
   { recordNode  ∷  Node_Record
   , arrayNode   ∷  Node_Array

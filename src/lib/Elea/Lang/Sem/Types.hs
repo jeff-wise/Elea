@@ -156,17 +156,16 @@ newParticleDB = ParticleDB VI.newValueIndex HMS.empty
 
 ------------------------ UNIVERSE --------------------------
 
-lookupSystem ∷ SystemId → SystemMap → System
-lookupSystem systemId = fromJust . HMS.lookup systemId
+lookupSystem ∷ SystemId → Universe → System
+lookupSystem systemId = fromJust . HMS.lookup systemId . univSysMap
 
 
-lookupForce ∷ ForceId → ForceMap → Force
-lookupForce forceId = fromJust . HMS.lookup forceId
+lookupForce ∷ ForceId → Universe → Force
+lookupForce forceId = fromJust . HMS.lookup forceId . univForceMap
 
 
-queueEffect ∷ EffectQueue → Effect → STM ()
-queueEffect = writeTQueue 
-
+queueEffect ∷ Effect → Universe → STM ()
+queueEffect eff univ = writeTQueue (univEffectQueue univ) eff
 
 
 
