@@ -64,6 +64,6 @@ project univ value (Projection lens systemId) = do
   signals ← reactions targetSystem projValue
   effects ← L.concat <$> forM signals
                 (\s → broadcast targetSystem s projValue)
-  mapM_ (queueEffect univ) effects
+  mapM_ (flip queueEffect univ) effects
 
 

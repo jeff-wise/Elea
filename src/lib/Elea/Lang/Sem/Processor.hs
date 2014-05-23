@@ -32,7 +32,7 @@ processor univ@(Univ _ forceMap effectQueue) = forever process
     process = do
       (Effect paramMap forceIds) ← atomically $ readTQueue effectQueue
       forM_ forceIds (\forceId → do
-        let force = lookupForce forceId forceMap
+        let force = lookupForce forceId univ
         case force of 
           F_Syn synth  → forkIO $ atomically $ 
                             synthesize univ paramMap synth

@@ -163,40 +163,41 @@ main = do
   effectQueue ← atomically $ newEffectQueue
   system ← atomically $ createBasicSystem
   let systemMap = HMS.singleton "basic" system
-  let universe = Univ systemMap forceMap effectQueue
+      universe = Univ systemMap forceMap effectQueue
+      sendEffect = flip queueEffect
   -- Start the processor in its own thread to wait for effects
   _ ← forkIO $ processor universe
   -- Run the test forces by feeding effects to the processor
   atomically $ do
     -- Chase creates input A
-    queueEffect effectQueue $
+    sendEffect universe $
       Effect
         (HMS.singleton "user" (Val_Txt $ Txt "Chase"))
         ["synInputA"]
     -- Wilson creates input B
-    queueEffect effectQueue $
+    sendEffect universe $
       Effect
         (HMS.singleton "user" (Val_Txt $ Txt "Wilson"))
         ["synInputB"]
     -- Chase creates input C
-    queueEffect effectQueue $
+    sendEffect universe $
       Effect
         (HMS.fromList [ ("user" , Val_Txt $ Txt "Chase")
                       , ("age"  , Val_Num $ Z 25       )
                       ]) 
         ["synInputC"]
     -- Wilson creates input A
-    queueEffect effectQueue $
+    sendEffect universe $
       Effect
         (HMS.singleton "user" (Val_Txt $ Txt "Wilson"))
         ["synInputA"]
     -- Chase creates input B
-    queueEffect effectQueue $
+    sendEffect universe $
       Effect
         (HMS.singleton "user" (Val_Txt $ Txt "Chase"))
         ["synInputB"]
     -- Wilson creates input C
-    queueEffect effectQueue $
+    sendEffect universe $
       Effect
         (HMS.fromList [ ("user" , Val_Txt $ Txt "Wilson")
                       , ("age"  , Val_Num $ Z 41        )

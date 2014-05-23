@@ -83,7 +83,7 @@ simpleArray = Ty_And $ AndType
   ]
 
 textLen4andBoat = Ty_And $ AndType
-  [ Ty_Txt $ IsText $ Text "boat"
+  [ Ty_Txt $ IsText $ Txt "boat"
   , Ty_Txt $ WithTextLen 4
   ]
 
@@ -99,15 +99,15 @@ lt0OrGt10 = Ty_Or $ OrType
   ]
 
 dogOrCat = Ty_Or $ OrType
-  [ Ty_Txt $ IsText $ Text "dog"
-  , Ty_Txt $ IsText $ Text "cat"
+  [ Ty_Txt $ IsText $ Txt "dog"
+  , Ty_Txt $ IsText $ Txt "cat"
   ]
 
 
 
 -- ***** Textual Types
 
-isOceanText    = Ty_Txt $ IsText $ Text "Ocean"
+isOceanText    = Ty_Txt $ IsText $ Txt "Ocean"
 textLengthFive = Ty_Txt $ WithTextLen 5
 anyText        = Ty_Txt AnyText
 
@@ -185,7 +185,7 @@ tests_recordLookup = testGroup "Record Lookup"
 test1_recordLookup =
   let nameRecord =  Val_Rec $ Rec $
                       HMS.singleton "name" $
-                        Val_Txt $ Text "Bob"
+                        Val_Txt $ Txt "Bob"
   in  testCase "Lookup Name Record" $
         lookup nameRecord testTypeIndex
           @?=
@@ -194,7 +194,7 @@ test1_recordLookup =
 
 test2_recordLookup =
   let personRecord =  Val_Rec $ Rec $ HMS.fromList
-                        [ ("name", Val_Txt $ Text "James")
+                        [ ("name", Val_Txt $ Txt "James")
                         , ("age", Val_Num $ Z 25)
                         ]
   in  testCase "Lookup Person Record" $
@@ -226,8 +226,8 @@ test1_arrayLookup =
 test2_arrayLookup =
   let randomArray = Val_Arr $ Arr $ Seq.fromList
                       [ Val_Num $ Z (-10)
-                      , Val_Txt $ Text "book"
-                      , Val_Txt $ Text "dinosaur"
+                      , Val_Txt $ Txt "book"
+                      , Val_Txt $ Txt "dinosaur"
                       ]
   in  testCase "Lookup [-10, book, dinosaur]" $
         lookup randomArray testTypeIndex
@@ -249,7 +249,7 @@ tests_textLookup = testGroup "Text Lookup"
 
 
 test1_textLookup =
-  let oceanText = Val_Txt $ Text "Ocean"
+  let oceanText = Val_Txt $ Txt "Ocean"
   in  testCase "Lookup 'Ocean'" $
         lookup oceanText testTypeIndex
           @?=
@@ -257,7 +257,7 @@ test1_textLookup =
 
 
 test2_textLookup =
-  let dogText = Val_Txt $ Text "dog"
+  let dogText = Val_Txt $ Txt "dog"
   in  testCase "Lookup 'dog" $
         lookup dogText testTypeIndex
           @?=
@@ -265,7 +265,7 @@ test2_textLookup =
 
 
 test3_textLookup =
-  let boatText = Val_Txt $ Text "boat"
+  let boatText = Val_Txt $ Txt "boat"
   in  testCase "Lookup 'boat" $
         lookup boatText testTypeIndex
           @?=

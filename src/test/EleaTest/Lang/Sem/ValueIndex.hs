@@ -52,22 +52,22 @@ tests_ValueIndex =  testGroup "Value Index"
 -- ***** Records
 
 simpleRecord = Val_Rec $ Rec $ HMS.fromList
-  [ ("name", Val_Txt $ Text "James") 
+  [ ("name", Val_Txt $ Txt "James") 
   , ("age", Val_Num $ Z 8) 
   ]
 
 fancyRecord = Val_Rec $ Rec $ HMS.fromList 
-  [ ("type", Val_Txt $ Text "post")
-  , ("name", Val_Txt $ Text "James")
+  [ ("type", Val_Txt $ Txt "post")
+  , ("name", Val_Txt $ Txt "James")
   , ("tags" , Val_Arr $ Arr $ Seq.fromList
-      [ Val_Txt $ Text "hiking"
-      , Val_Txt $ Text "alps"
-      , Val_Txt $ Text "honeymoon"
+      [ Val_Txt $ Txt "hiking"
+      , Val_Txt $ Txt "alps"
+      , Val_Txt $ Txt "honeymoon"
       ]
     )
   , ("comments", Val_Rec $ Rec $ HMS.fromList
-      [ ("Sara", Val_Txt $ Text "Nice Post!")
-      , ("Ron" , Val_Txt $ Text "So cool." )
+      [ ("Sara", Val_Txt $ Txt "Nice Post!")
+      , ("Ron" , Val_Txt $ Txt "So cool." )
       ]
     )
   ]
@@ -78,7 +78,7 @@ fancyRecord = Val_Rec $ Rec $ HMS.fromList
 
 simpleArray = Val_Arr $ Arr $ Seq.fromList
   [ zero
-  , Val_Txt $ Text "two"
+  , Val_Txt $ Txt "two"
   , Val_Num $ R 3.0
   ]
 
@@ -94,9 +94,9 @@ fancyArray = Val_Arr $ Arr $ Seq.fromList
 
 -- ***** Texts
 
-telescopeText = Val_Txt $ Text "telescope"
-christmasText = Val_Txt $ Text "Christmas"
-dogText = Val_Txt $ Text "dog"
+telescopeText = Val_Txt $ Txt "telescope"
+christmasText = Val_Txt $ Txt "Christmas"
+dogText = Val_Txt $ Txt "dog"
 
 
 
@@ -153,7 +153,7 @@ tests_lookupRecordType = testGroup "Record Type Lookup"
 
 test1_recordTypeLookup = 
   let isPostType =  Ty_Rec $ HasEntry "type"
-                      (Ty_Txt $ IsText $ Text "post")
+                      (Ty_Txt $ IsText $ Txt "post")
   in  testCase "Is a Post" $
         lookup isPostType testValueIndex
           @?=
@@ -163,7 +163,7 @@ test1_recordTypeLookup =
 test2_recordTypeLookup = 
   let isAboutHiking = Ty_Rec $ HasEntry "tags"
                         (Ty_Arr $ WithIndex 0
-                          (Ty_Txt $ IsText $ Text "hiking"))
+                          (Ty_Txt $ IsText $ Txt "hiking"))
   in  testCase "Post about Hiking" $
         lookup isAboutHiking testValueIndex
           @?=
@@ -172,7 +172,7 @@ test2_recordTypeLookup =
 
 test3_recordTypeLookup =
   let byJames = Ty_Rec $ HasEntry "name"
-                  (Ty_Txt $ IsText $ Text "James")
+                  (Ty_Txt $ IsText $ Txt "James")
   in  testCase "Name of James" $
         lookup byJames testValueIndex
           @?=
@@ -211,7 +211,7 @@ tests_lookupArrayType = testGroup "Array Type Lookup"
 
 test1_arrayTypeLookup =
   let hasDog = Ty_Arr $ WithIndex 1
-                  (Ty_Txt $ IsText $ Text "dog")
+                  (Ty_Txt $ IsText $ Txt "dog")
   in  testCase "Has Dog" $
         lookup hasDog testValueIndex
           @?=
@@ -266,7 +266,7 @@ tests_lookupTextType = testGroup "Text Type Lookup"
 
 
 test1_textTypeLookup =
-  let isTelescope = Ty_Txt $ IsText $ Text "telescope"
+  let isTelescope = Ty_Txt $ IsText $ Txt "telescope"
   in  testCase "Is Telescope" $
         lookup isTelescope testValueIndex
           @?=
@@ -389,9 +389,9 @@ test2_andTypeLookup =
 test3_andTypeLookup =
   let postByJames = Ty_And $ AndType
                       [ Ty_Rec $ HasEntry "type"
-                          (Ty_Txt $ IsText $ Text "post")
+                          (Ty_Txt $ IsText $ Txt "post")
                       , Ty_Rec $ HasEntry "name"
-                          (Ty_Txt $ IsText $ Text "James")
+                          (Ty_Txt $ IsText $ Txt "James")
                       ]
   in  testCase "Post by James" $
         lookup postByJames testValueIndex
@@ -447,7 +447,7 @@ test3_orTypeLookup =
   let has3orIsDog = Ty_Or $ OrType
                       [ Ty_Arr $ WithIndex 2
                           (Ty_Num $ IsNumber $ R 3.0)
-                      , Ty_Txt $ IsText $ Text "dog"
+                      , Ty_Txt $ IsText $ Txt "dog"
                       ]
   in  testCase "Array with 3.0 or dog text" $
         lookup has3orIsDog testValueIndex
