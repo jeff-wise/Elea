@@ -9,7 +9,12 @@ import Elea.Lang.Types
 import qualified Data.Text as T
 
 
+type AppId      = T.Text
+type AppIdShort = T.Text
+
+
 data App = App
-  { appName ∷  T.Text 
-  , appUniv ∷  Universe
+  { appId       ∷  AppId
+  , appIdShort  ∷  AppIdShort
+  , appUniv     ∷  Universe
   }

@@ -163,7 +163,7 @@ main = do
   effectQueue ← atomically $ newEffectQueue
   system ← atomically $ createBasicSystem
   let systemMap = HMS.singleton "basic" system
-  let universe = Univ systemMap forceMap effectQueue
+  universe ← newUniverse systemMap forceMap effectQueue
   -- Start the processor in its own thread to wait for effects
   _ ← forkIO $ processor universe
   -- Run the test forces by feeding effects to the processor

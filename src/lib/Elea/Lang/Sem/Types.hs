@@ -140,10 +140,13 @@ newReceptorDB = ReceptorDB TI.newTypeIndex HMS.empty
 data ParticleDB =
   ParticleDB
     ValueIndex
-    (HMS.HashMap Value Particle)
+    (HMS.HashMap ParticleId Particle)
 
 
-newtype Particle = Part Value
+newtype Particle = Part ParticleId Version Value
+
+type ParticleId = UUID
+type Version    = Integer
 
 
 -- | Create a new Particle Database
@@ -151,39 +154,6 @@ newParticleDB ∷ ParticleDB
 newParticleDB = ParticleDB VI.newValueIndex HMS.empty
 
 
-
-
-
------------------------- UNIVERSE --------------------------
-
-lookupSystem ∷ SystemId → Universe → System
-lookupSystem systemId = fromJust . HMS.lookup systemId . univSysMap
-
-
-lookupForce ∷ ForceId → Universe → Force
-lookupForce forceId = fromJust . HMS.lookup forceId . univForceMap
-
-
-queueEffect ∷ Effect → Universe → STM ()
-queueEffect eff univ = writeTQueue (univEffectQueue univ) eff
-
-
-
-data Universe = Univ
-  { univSysMap       ∷  SystemMap
-  , univForceMap     ∷  ForceMap
-  , univEffectQueue  ∷  EffectQueue
-  }
-  
-
-
-type SystemMap    = HMS.HashMap SystemId System
-type ForceMap     = HMS.HashMap ForceId Force
-type EffectQueue  = TQueue Effect
-
-
-newEffectQueue ∷ STM EffectQueue
-newEffectQueue = newTQueue
 
 
 
@@ -207,4 +177,64 @@ data SystemException =
 
 
 instance Exception SystemException
+
+
+
+
+
+------------------------ UNIVERSE --------------------------
+
+lookupSystem ∷ SystemId → Universe → System
+lookupSystem systemId = fromJust . HMS.lookup systemId . univSysMap
+
+
+lookupForce ∷ ForceId → Universe → Force
+lookupForce forceId = fromJust . HMS.lookup forceId . univForceMap
+
+
+queueEffect ∷ Effect → Universe → STM ()
+queueEffect eff univ = writeTQueue (univEffectQueue univ) eff
+
+
+
+data Universe = Univ
+  { univSysMap            ∷  SystemMap
+  , univForceMap          ∷  ForceMap
+  , univEffectQueue       ∷  EffectQueue
+  , univPoolOfUniqueness  ∷  TVar PoolOfUniqueness
+  }
+  
+
+newtype PoolOfUniqueness = POU [UUID]
+
+
+
+drawUnique ∷ TVar PoolOfUniqueness → STM UUID
+drawUnique poolVar = do
+  pool ← readTVar poolVar
+  let (POU (nextId : rest)) = pool
+  writeTVar poolVar $ POU rest
+  return nextId
+
+
+
+newUniverse ∷ SystemMap → ForceMap → EffectQueue → IO Universe
+newUniverse sysMap forceMap effQ =
+  Universe sysMap forceMap effQ <$> infiniteUUIDs
+
+
+
+type SystemMap    = HMS.HashMap SystemId System
+type ForceMap     = HMS.HashMap ForceId Force
+type EffectQueue  = TQueue Effect
+
+
+newEffectQueue ∷ STM EffectQueue
+newEffectQueue = newTQueue
+
+
+infiniteUUIDs ∷ IO [UUID]
+infiniteUUIDs = repeat <$> V4.nextRandom
+
+
 

@@ -4,9 +4,9 @@
 --
 -- A datastructure which stores values and automatically indexes specific
 -- properties so that they may be queried by 'Type'. 
-module Elea.Lang.Sem.ValueIndex (
-    ValueIndex    
-  , newValueIndex
+module Elea.Lang.Sem.ParticleIndex (
+    ParticleIndex    
+  , newParticleIndex
   , lookup, insert
   ) where
 
@@ -27,6 +27,8 @@ import qualified Data.Set as Set
 import qualified Data.Text as T
 
 
+-- need to return values matched, actually need particles matched
+-- need to map value to many particles
 
 
 -------------------------- TYPES --------------------------
@@ -48,10 +50,10 @@ type KeySet = Set.Set TypeKey
 type KeyCounter = Int
 
 
--- | Value Index
-data ValueIndex = ValueIndex
+-- | Particle Index
+data ParticleIndex = ParticleIndex
   { indexValueNode  ∷ Node_Value
-  , indexValueMap   ∷ HMS.HashMap TypeKey Value
+  , indexValueMap   ∷ HMS.HashMap TypeKey Particle
   , indexKeyCounter ∷ KeyCounter
   }
 
@@ -126,8 +128,8 @@ newtype Node_Number = Node_Number
 
 ------------------------ CONSTRUCTORS ----------------------
 
-newValueIndex ∷ ValueIndex
-newValueIndex = ValueIndex
+newParticleIndex ∷ ParticleIndex
+newParticleIndex = ParticleIndex
   { indexValueNode  =  newValueNode
   , indexValueMap   =  HMS.empty
   , indexKeyCounter =  0
@@ -149,9 +151,9 @@ newValueNode = Node_Value
 --------------------------- INSERT -------------------------
 
 -- Values are verified by the system to be unique before inserted.
-insert ∷ Value → ValueIndex → ValueIndex
-insert value (ValueIndex currValueNode valueMap currKey) =
-  ValueIndex
+insert ∷ Value → a → ParticleIndex → ParticleIndex
+insert value (ParticleIndex currValueNode valueMap currKey) =
+  ParticleIndex
   { indexValueNode  = insertValue value currKey currValueNode
   , indexValueMap   = HMS.insert currKey value valueMap
   , indexKeyCounter = currKey + 1
@@ -246,8 +248,8 @@ insertNumber number key (Node_Number currNumberIndex) =
 -------------------------- LOOKUP --------------------------
 
 -- | Lookup values by property.
-lookup ∷ Type → ValueIndex → HS.HashSet Value
-lookup typ (ValueIndex valueNode valueMap _) =
+lookup ∷ Type → ParticleIndex → HS.HashSet Value
+lookup typ (ParticleIndex valueNode valueMap _) =
   let typeKeys = Set.toList $ lookupType typ valueNode
   in  HS.fromList $ (flip fmap) typeKeys (\typeKey →
         case HMS.lookup typeKey valueMap of

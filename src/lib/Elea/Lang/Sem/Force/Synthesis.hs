@@ -60,7 +60,7 @@ project ∷ Universe → Value → Projection → STM ()
 project univ value (Projection lens systemId) = do
   let projValue = fromJust $ get lens value
   let targetSystem = lookupSystem systemId univ
-  addParticle targetSystem $ ParticleDef projValue
+  addParticle (univPoolOfUniqueness univ) targetSystem $ ParticleDef projValue
   signals ← reactions targetSystem projValue
   effects ← L.concat <$> forM signals
                 (\s → broadcast targetSystem s projValue)

@@ -109,9 +109,17 @@ send signal value
 
 -- | Add a particle to a system, provided the particle
 -- has a unique value
-addParticle ∷ System → ParticleDefinition → STM ()
-addParticle system (ParticleDef partVal) = do
+addParticle ∷ TVar PoolOfUniqueness → System → ParticleDefinition → STM ()
+addParticle poolVar system (ParticleDef partVal) = do
+  uuid ← drawUnique poolVar
   let particleDBVar = sysPartDbVar system
+      -- For now assume particle is always new concept, version = 0
+      newParticle   = Part uuid 0 partVal
+  modifyTVar particleDBVar $ (\(ParticleDB valIdx partHM) →
+    ParticleDB
+      (VI.insert partVal valIdx)    
+      (HMS.insert uuid newParticle partHM)
+  )
   particleDB ← readTVar particleDBVar
   case updateParticleDB particleDB of
     Just particleDB' → writeTVar particleDBVar particleDB'
@@ -119,6 +127,7 @@ addParticle system (ParticleDef partVal) = do
 
   where
 
+{- TODO Removal Candidate
     -- | Insert a particle into the database.
     -- If particle of exact same value already exists, this
     -- function returns Nothing.
@@ -129,7 +138,7 @@ addParticle system (ParticleDef partVal) = do
         (VI.insert partVal valIdx )
         (HMS.insert partVal (Part partVal) partHM)
 
-
+-}
 
 
 ----------------------- ADD RECEPTOR -----------------------

@@ -5,6 +5,11 @@
 
 ## Purpose
 
+
+Talk about how all data is accessible in an application. all that matters is
+invariants. Of course, invariants can prove access controls if that is
+necessary.
+
 The programming process may be deconstructed into two independent processes:
 
  * Specification

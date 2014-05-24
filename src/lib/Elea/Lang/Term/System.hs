@@ -45,6 +45,5 @@ type EventClass = Lens
 data ReceptorDefintion = ReceptorDef ReceptorId Type
 
 
-
 newtype ParticleDefinition = ParticleDef Value
 
