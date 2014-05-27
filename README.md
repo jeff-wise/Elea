@@ -30,7 +30,7 @@ Spreadsheets are the ultimate example of these alternative forms of programming.
 Spreadsheets permit users to define data in the form of two-dimensional arrays
 and provide the ability to manipulate data in this form in numerous ways such as
 sorting, coloring, mathematical calculations, and so on. They provide a specific
-model of programming which suites many applications, and most spreadsheet users
+model of programming which fits many applications, and most spreadsheet users
 do not even know that they are programmers.
 
 Elea is a programming language intended to be used by anyone, with or without a
