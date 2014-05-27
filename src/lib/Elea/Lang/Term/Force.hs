@@ -4,8 +4,6 @@ module Elea.Lang.Term.Force where
 
 
 import Elea.Prelude
-
-import Elea.Lang.Term.Identifiers
 import Elea.Lang.Term.Lens
 import Elea.Lang.Term.Transformer
 import Elea.Lang.Term.Value

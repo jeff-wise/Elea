@@ -14,9 +14,6 @@ import Elea.Lang.Term.System
 import Elea.Lang.Term.Type
 import Elea.Lang.Term.Value
 
-import Elea.Lang.Sem.TypeIndex as TI
-import Elea.Lang.Sem.ValueIndex as VI
-
 
 import Control.Exception
 import Control.Concurrent.STM
@@ -112,46 +109,23 @@ type EventId = Value
 
 
 
-
--- | Receptor Database
--- Index each receptor type, since receptors are most often
--- searched on a value to find which types it matches.
-data ReceptorDB =
-  ReceptorDB
-    TypeIndex
-    (HMS.HashMap Type Receptor)
-
-
 newtype Receptor = Recp Signal
 
 
--- | Create a new Receptor Database
-newReceptorDB ∷ ReceptorDB
-newReceptorDB = ReceptorDB TI.newTypeIndex HMS.empty
+
+data Particle = Particle
+  { partId    ∷  ParticleId
+  , partVer   ∷  Version
+  , partValue ∷  Value
+  }
 
 
+instance Ord Particle where
+  compare particleA particleB = (partId particleA) `compare` (partId particleB)
 
-
--- | Particle Database
--- Index each particle value, since particles are most often
--- queried by type (to find matching values).
--- Store particles in map, for now. The map isn't really used
--- at the moment, other than to check for duplicate values.
-data ParticleDB =
-  ParticleDB
-    ValueIndex
-    (HMS.HashMap ParticleId Particle)
-
-
-newtype Particle = Part ParticleId Version Value
 
 type ParticleId = UUID
-type Version    = Integer
-
-
--- | Create a new Particle Database
-newParticleDB ∷ ParticleDB
-newParticleDB = ParticleDB VI.newValueIndex HMS.empty
+type Version    = Int
 
 
 

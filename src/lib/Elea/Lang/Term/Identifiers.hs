@@ -10,12 +10,15 @@ module Elea.Lang.Term.Identifiers where
 
 
 import qualified Data.Text as T
+import Data.UUID
 
 
 
 type ForceId = T.Text
 
-type SystemId = T.Text
+type SystemId = UUID
+
+type ValueId = UUID
 
 type ReceptorId = T.Text
 

@@ -109,9 +109,9 @@ send signal value
 
 -- | Add a particle to a system, provided the particle
 -- has a unique value
-addParticle ∷ TVar PoolOfUniqueness → System → ParticleDefinition → STM ()
-addParticle poolVar system (ParticleDef partVal) = do
-  uuid ← drawUnique poolVar
+addParticle ∷ Universe → System → ParticleDefinition → STM ()
+addParticle univ system (ParticleDef partVal) = do
+  uuid ← drawUnique univ
   let particleDBVar = sysPartDbVar system
       -- For now assume particle is always new concept, version = 0
       newParticle   = Part uuid 0 partVal

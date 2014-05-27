@@ -53,7 +53,7 @@ type KeyCounter = Int
 -- | Particle Index
 data ParticleIndex = ParticleIndex
   { indexValueNode  ∷ Node_Value
-  , indexValueMap   ∷ HMS.HashMap TypeKey Particle
+  , indexPartMap    ∷ HMS.HashMap TypeKey Particle
   , indexKeyCounter ∷ KeyCounter
   }
 
@@ -150,12 +150,16 @@ newValueNode = Node_Value
 
 --------------------------- INSERT -------------------------
 
--- Values are verified by the system to be unique before inserted.
-insert ∷ Value → a → ParticleIndex → ParticleIndex
-insert value (ParticleIndex currValueNode valueMap currKey) =
+-- | Insert a particle into the index
+-- If the particle already exists, it will override the currently
+-- indexed value. (not yet implemented). Each particle will have a
+-- flag to indicate if it was indexed and what its key was.
+insert ∷ Particle → ParticleIndex → ParticleIndex
+insert particle@(Part _ _ partValue)
+       (ParticleIndex currValueNode currPartMap currKey) =
   ParticleIndex
-  { indexValueNode  = insertValue value currKey currValueNode
-  , indexValueMap   = HMS.insert currKey value valueMap
+  { indexValueNode  = insertValue partValue currKey currValueNode
+  , indexPartMap    = HMS.insert currKey particle currPartMap
   , indexKeyCounter = currKey + 1
   }
 
@@ -248,13 +252,13 @@ insertNumber number key (Node_Number currNumberIndex) =
 -------------------------- LOOKUP --------------------------
 
 -- | Lookup values by property.
-lookup ∷ Type → ParticleIndex → HS.HashSet Value
-lookup typ (ParticleIndex valueNode valueMap _) =
-  let typeKeys = Set.toList $ lookupType typ valueNode
-  in  HS.fromList $ (flip fmap) typeKeys (\typeKey →
-        case HMS.lookup typeKey valueMap of
-          Just value  → value
-          Nothing     → error "Should not happen"
+lookup ∷ Type → ParticleIndex → Set.Set Particle
+lookup typ (ParticleIndex valueNode partMap _) =
+  let typeKeys = lookupType typ valueNode
+  in  Set.map typeKeys (\typeKey →
+        case HMS.lookup typeKey partMap of
+          Just particle → particle
+          Nothing       → error "Should not happen"
       )
 
 
