@@ -11,6 +11,14 @@ naturality. They look and behave predictably, made for human hands and human
 eyes.
 
 
+programming about defining structures
+properties of Elea structures
+human intuitive but machine interpretable
+universal, integrated, distributed, concurrent.
+easily modifiable, minimal dependences. all information is viewale from anywhere
+strongly typed. interfaced.
+reactive behaviors
+
 
 -- summary paragraph of language attributes
 
