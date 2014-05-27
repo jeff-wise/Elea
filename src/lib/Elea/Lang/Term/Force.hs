@@ -19,10 +19,23 @@ data Force =
   | F_IO  IOAction
 
 
-data Synthesis = Syn Transformer [Projection]
+data Synthesis = Syn Transformer [Map]
 
-data Projection = Projection Lens SystemId
+
+data Map = Map Lens Projection
+
+
+data Projection = Projection Location Method
+
+
+data Location = Location URL SystemId
+
+data URL = URL 
+
+data Method = Genesis | Mutation ValueId Lens
 
 
 data IOAction = IOPerform ((HMS.HashMap Signal Value) → IO ())
+
+
 

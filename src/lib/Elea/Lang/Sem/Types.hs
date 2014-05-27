@@ -184,8 +184,9 @@ instance Exception SystemException
 
 ------------------------ UNIVERSE --------------------------
 
-lookupSystem ∷ SystemId → Universe → System
-lookupSystem systemId = fromJust . HMS.lookup systemId . univSysMap
+
+findSystem ∷ Location → Universe → System
+findSystem (Location _ systemId) = fromJust . HMS.lookup systemId . univSysMap
 
 
 lookupForce ∷ ForceId → Universe → Force

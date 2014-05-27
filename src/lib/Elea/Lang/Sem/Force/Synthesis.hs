@@ -35,7 +35,7 @@ import Data.Maybe (fromJust)
 
 -- | Synthesize a new particle
 synthesize ∷ Universe → ParamMap → Synthesis → STM ()
-synthesize univ paramMap (Syn transformer projs) = do
+synthesize univ paramMap (Syn transformer maps) = do
   -- Run transformer to build new value
   value ← transform univ paramMap transformer
   -- Project each value
@@ -54,13 +54,25 @@ transform _ paramMap transformer =
 
 
 
+-- | Map
+map ∷ Universe → Value → Map → STM ()
+map univ synValue (Map lens proj) = do
+  let mapValue = fromJust $ get lens synValue
+  project univ mapValue proj
+
+
 
 -- | Project
 project ∷ Universe → Value → Projection → STM ()
-project univ value (Projection lens systemId) = do
-  let projValue = fromJust $ get lens value
-  let targetSystem = lookupSystem systemId univ
-  addParticle (univPoolOfUniqueness univ) targetSystem $ ParticleDef projValue
+project univ projValue (Projection location method) = do
+  let targetSystem = findSystem location univ
+  -- Project the value to its location
+  case method of
+    Genesis               →
+        addParticle univ targetSystem $ ParticleDef projValue
+    Mutation valueId lens → do
+        modParticle targetSystem valueId lens projValue
+  -- Resolve the side effects of the new value
   signals ← reactions targetSystem projValue
   effects ← L.concat <$> forM signals
                 (\s → broadcast targetSystem s projValue)

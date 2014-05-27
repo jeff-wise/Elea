@@ -10,6 +10,21 @@ Talk about how all data is accessible in an application. all that matters is
 invariants. Of course, invariants can prove access controls if that is
 necessary.
 
+
+Actually a general programming language. Data is automatically in the real
+world. Can set permissions on data, but everyhting is nont only concurrent by
+default like in the real world, but is also distributed. Which is why systems
+and values are automatically given UUIDs. A system may be distributed across
+many different machines and can interact with itself and merge without issues.
+Automatically include vector clock? Is a real-world programming language, is an
+integrated language. Use integrated term.
+
+Concepts. Represents real world entity. philosophical concept What is a concept
+really?
+
+Locations. Represents real world location.
+
+
 The programming process may be deconstructed into two independent processes:
 
  * Specification

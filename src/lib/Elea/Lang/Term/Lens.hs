@@ -24,3 +24,5 @@ data RecordLens = AtLabel T.Text Lens
 data ArrayLens = AtIndex Int Lens
 
 
+data LensMethod = Get | Put
+

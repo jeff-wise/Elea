@@ -14,23 +14,46 @@ import qualified Data.Sequence as Seq
 
 
 
-get ∷ Lens → Value → Maybe Value 
-get (Lens_Rec recLens) (Val_Rec rec) = getRecord recLens rec
-get (Lens_Arr arrLens) (Val_Arr arr) = getArray  arrLens arr
-get Lens_This          value         = Just value 
-get _                  _             = Nothing
+
+lens ∷ LensMethod → Lens → Value → Maybe Value 
+lens method = go
+  where
+    go (Lens_Rec recLens) (Val_Rec rec) = lensRecord method recLens rec
+    go (Lens_Arr arrLens) (Val_Arr arr) = lensArray  method arrLens arr
+    go Lens_This          value         = case method of
+                                            Get     → Just value
+                                            Put val → Just val
+    go _                  _             = Nothing
 
 
 
-getRecord ∷ RecordLens → Record → Maybe Value
-getRecord (AtLabel label lens) (Rec hm) =
-  HMS.lookup label hm >>= get lens
+
+lensRecord ∷ LensMethod → RecordLens → Record → Maybe Value
+lensRecord method = go
+  where
+    go (AtLabel label entryLens) (Rec hm) = do
+      recValue ← HMS.lookup label hm
+      case method of 
+        Get     → lens method entryLens recValue
+        Put val → do
+          modValue ← lens method entryLens recValue
+          return $ Rec $ HMS.insert label modValue hm
 
 
-getArray ∷ ArrayLens → Array → Maybe Value
-getArray (AtIndex i lens) (Arr arr) =
-  if i >=0
-    then get lens $ Seq.index arr i
-    else Nothing
+
+
+lensArray ∷ LensMethod → ArrayLens → Array → Maybe Value
+lensArray method = go
+  where
+    go (AtIndex i idxLens) (Arr arr) = do
+      guard $ (i >= 0) && (i < Seq.length arr)
+      let idxVal = Seq.index arr i
+      case method of
+        Get   → lens method idxLens idxVal 
+        Put _ → do 
+          idxVal' ← lens method idxLens idxVal
+          return $ Arr $ Seq.update i idxVal' arr
+
+
 
 
