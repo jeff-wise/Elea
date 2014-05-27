@@ -21,7 +21,7 @@ A programming language provides the means to specify data and data
 transformations. There are many, many ways to do this. Evidence for that
 statement includes the large number of programming languages currently in
 commericial and academic use, all of which enable the users to declare data and
-program behaviors in different ways. In additional, the generality of the first
+program behaviors in different ways. In addition, the generality of the first
 sentence can be interpreted to include forms not commonly denoted as
 *programming languages*. All together, would-be programmers can choose from
 hundreds of tools to declare data and various behaviors of that data.
@@ -37,10 +37,10 @@ Elea is a programming language intended to be used by anyone, with or without a
 degree in computer science, prior programming experience, appreciation for
 mathematics, time, resources, money, education, etc... It aims to be like
 spreadsheets, in the manner that it should be intuitve and accessible.
-Furthermore, it aims to be more powerful that spreadsheets, bringing the ability
+Furthermore, it aims to be more powerful than spreadsheets, bringing the ability
 to construct software to anyone with an interest. Not just anyone with an
-interest AND x, where x is some limiting factor that just comes with life and
-should not get in the way of enabling someone to build software. A world
+interest AND not x, where x is some limiting factor that just comes with life
+and should not get in the way of enabling someone to build software. A world
 controlled by software that no one can program, is like a world made of toxic
 materials that only a few have immunity to. It's prohibitive and potentially
 dangerous.
@@ -77,8 +77,7 @@ this programming. We are humans, so of course we always start with structures
 that are interpreted by humans. In order to take our ideas and give them to
 computers to use, we must remove the ambiguity in them by translating them into
 a language which computers can understand, that which is precise and
-unambiguous. When I say programmer, I still mean it in the general sense
-ascribed in the initial paragraph.
+unambiguous. 
 
 Here is a real world example of this dichotomy of interpretations. I work with
 healthcare software during a transitional period from paper charts to electronic
