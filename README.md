@@ -12,9 +12,9 @@ processes. Most importantly, it is a fully integrated, general purpose language.
 All systems are automatically given web APIs. Values and systems are given
 UUIDs, such that systems are automatically distributed.  All processes are
 concurrent. Programs are universal by default, just like any real world
-constructions. Elea is a very different, unconvential language with the ultimate
+constructions. Elea is a very different, unconventional language with the ultimate
 goal of enabling anyone to program and construct complex software with minimal
-difficulty.
+difficulty. Elea is a language for humans, not machines.
 
 ## How to Run
 

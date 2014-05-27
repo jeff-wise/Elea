@@ -55,6 +55,14 @@ programmer more like an artist than a translator. Gets to express ideas
 directly, does not have to indirectly express ideas and spend so much time on
 understanding how the machine works. Spend time with human ideas.
 
+this is reason that I created elea in first place. was working on game deve.
+have many creative ideas to express, but always limited by expressing those
+ideas in way computer can understand. Haskell helps but not always enough. can
+do better. should also empower others to be able to do the same. Found elea by
+accident, evolved a lot. took all good ideas and put into one. Is really about
+finding way to define structures optimally for human expression. Elea is a
+language for humans, not machines.
+
 ## Integration
 
 Elea is an actual general purpose programming language. Programs are not
