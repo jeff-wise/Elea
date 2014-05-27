@@ -68,7 +68,7 @@ ambiguity. Humans can interpret structures which are vague or not precisely
 defined. We have an understanding of the world as humans that enables us to
 leave out information when we communicate. When we interpret structures, we
 almost always make assumptions. These assumptions enable us to function fluidly
-in the real world. Computers though do not make assumptions, they can interpret
+in the real world. Computers though do not make assumptions, they cannnot interpret
 ambiguous structures. Computations fail without information.
 
 Modern programmers are translators, taking structures interpreted by humans and
