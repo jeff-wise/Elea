@@ -2,108 +2,106 @@
 
 *Preliminary notes* on the language design.
 
+## How to Run
+
+Right now there is not much to see. All the ideas are still mostly within the
+source code.
+
+#####Test Suite
+`cabal run testsuite`
+
+#####Paltry Example
+`cabal run example-basic`
+
 
 ## Purpose
 
-The programming process may be deconstructed into two independent processes:
 
- * Specification
- * Translation
+A programming language provides the means to specify data and data
+transformations. There are many, many ways to do this. Evidence for that
+statement includes the large number of programming languages currently in
+commericial and academic use, all of which enable the users to declare data and
+program behaviors in different ways. In additional, the generality of the first
+sentence can be interpreted to include forms not commonly denoted as
+*programming languages*. All together, would-be programmers can choose from
+hundreds of tools to declare data and various behaviors of that data.
 
-Specification is design -- all of the details of the required components,
-interfaces, and properties of the program. Conceptually, the specification is
-the program.
+Spreadsheets are the ultimate example of these alternative forms of programming.
+Spreadsheets permit users to define data in the form of two-dimensional arrays
+and provide the ability to manipulate data in this form in numerous ways such as
+sorting, coloring, mathematical calculations, and so on. They provide a specific
+model of programming which suites many applications, and most spreadsheet users
+do not even know that they are programmers.
 
-Translation is the process of transforming a specification into a machine
-executable format. The typical conception of programming is translation. It is
-the act of the software engineer to take a set of requirements and construct a
-collection of code modules which implements those requirements. Requirements are
-usually in a *human* language, often with some added structure to reflect
-dependencies, priorities, etc... 
+Elea is a programming language intended to be used by anyone, with or without a
+degree in computer science, prior programming experience, appreciation for
+mathematics, time, resources, money, education, etc... It aims to be like
+spreadsheets, in the manner that it should be intuitve and accessible.
+Furthermore, it aims to be more powerful that spreadsheets, bringing the ability
+to construct software to anyone with an interest. Not just anyone with an
+interest AND x, where x is some limiting factor that just comes with life and
+should not get in the way of enabling someone to build software. A world
+controlled by software that no one can program, is like a world made of toxic
+materials that only a few have immunity to. It's prohibitive and potentially
+dangerous.
 
-Programmers glorify translation and underestimate specification. Most often, the
-people doing the specification do not do the translation, but this has been
-improving with agile methods. Translation is unnecessary in an ideal world. The
-person who wants a program describes the program he or she wants, and that
-description is machine executable. 
+So how does a programming language that acheives this goal allow users to
+specify data and behaviors? We should start by looking at the different ways to
+specify data and write transformations over data, and then the direction will be
+much clearer. To do so, we will think about the structure of the universe, the
+human mind, the current state of programming, and the nature of computuation. 
 
-As an example of how translation is over-emphasized, examine the idea that one
-day we could speak to a computer about the program we want, and it would build
-that program for us. This is impossible. Any program that is even a little
-interesting would be far too complex to declare verbally. In fact, the act of
-*declaring* any program is equivalent to constructing that program. The
-difference is in the execution of that program.
+There are many ways to describe structures in our universe. Here's an arbitrary
+list of terms: graphs, trees, lists, spreadsheets, products, sums, nesting,
+order, heirachical, concurrent, parameterized, encapsulated, and so on. We might
+list terms like this all day. In the end, we must consider what they mean.
+Meaning of these terms can only be ascribed through interpretation. To gain
+insight into how we specify data now, let's contrast two main types of
+interpretation, which we shall denote as machine and human interpretations.
 
-If the specification is complete, then it may be executed by any means --
-perhaps a person manually performs the interpretation. The program could be like
-a traditional piece of software, but it could also be something like a workplace
-training procedure or recipe for dinner or a plan for some project. Translation
-is concerned with the execution of the program, which is fundamentally different
-than the program itself. A program could be executed in different environments,
-on different mediums, and with different execution properties.
+Human interpretations basically just means that a person inteprets it. Simply
+having an understanding of some structure is an interpretation of it. A person
+knows what a list is, and as such, can use a list. Machine interpretations are
+those performed by a traditional computer, the kind we use everyday (yes, there
+are others). The primary difference between the two modes of interpretation is
+ambiguity. Humans can interpret structures which are vague or not precisely
+defined. We have an understanding of the world as humans that enables us to
+leave out information when we communicate. When we interpret structures, we
+almost always make assumptions. These assumptions enable us to function fluidly
+in the real world. Computers though do not make assumptions, they can interpret
+ambiguous structures. Computations fail without information.
 
-The difference between specification and translation appears in the debate of
-declarative languages versus imperative languages. Declarative languages,
-especially lazy functional ones, focus on the specification of a program. They
-admit that the difficultly in programming is not primarily in execution, but in
-just writing that program out. Without a specification, there is nothing to
-execute.
+Modern programmers are translators, taking structures interpreted by humans and
+translating them into structures capable of computer interpretation. We call
+this programming. We are humans, so of course we always start with structures
+that are interpreted by humans. In order to take our ideas and give them to
+computers to use, we must remove the ambiguity in them by translating them into
+a language which computers can understand, that which is precise and
+unambiguous. When I say programmer, I still mean it in the general sense
+ascribed in the initial paragraph.
 
-Because declarative languages focus in specifying what and not how, they do not
-conflate how to execute a program and what the program does (as much).
-Complexity becomes easier to handle. Composition is a more powerful tool.
-Well-defined and elegant mathematical abstractions play a more fundamental role
-in design, because they aren't forced into any particular computational model.
+Here is a real world example of this dichotomy of interpretations. I work with
+healthcare software during a transitional period from paper charts to electronic
+charts. Many challenges arise. They electronic system may be slower, it may be
+difficult to use at times, and its use by be limited, forcing the users into
+somewhat convoluted or inefficient workflows. The ultimate challenge though
+comes when building the old paper-based workflows into the electronic system. By
+doing so, we take structures (the workflows made of forms, procedures, etc..)
+which were built only for human interpretation and must design them for computer
+interpration, which means removing all of the ambiguities, of which there are
+often many. When dealing with paper data, clinicians can leave out information
+and make assumptions that other clinicians can figure out. The computer does not
+work this way, and requires that all information be clearly defined and present
+in every case. Utlimately, the act of building these workflows into the
+electronic environment required going back and actually rebuilding the workflows
+themselves because they were never clearly defined to begin with. People were
+able to function without clear definitions. Still, assumptions and incomplete
+information are never a good thing, especially in a patient care context.  The
+electronic workflows are superior by being unambiguous. It was the nature of the
+software and the way its interpreted that forced us to realize these errors in
+the nature of humans to begin with. 
 
-Consider two recipes:
-
- 1. Chop vegetables.
- 2. Fry vegetables.
-
- 1. Pick up knife
- 2. Heat a pan.
- 3. Place knife over vegetables, press downwards, lift up, move the knife over.
-    Repeat.
- 4. Place oil in pan.
- 5. Pick up vegetables.
- 6. Put vegetables in pan.
-
-Any professional chef could be given the first list, and follow the steps. The
-chef would do so idiosyncratically, according to his or her personal techniques,
-experience, styles, and tastes. Given the second list, most chefs might be
-frustrated. It's almost insulting that it tries to tell the chef *how* to do her
-job, as opposed to what to do. The job could be done many ways with similar
-results.  The essense of fried vegetables is in the chopping and the pan, not
-the movements of the knife, the hands, or the placement of the vegetables.
-
-The key point is that we abstract over the execution of the cooking and focus on
-the components of the result. We need vegetables and frying. How those
-components are executed is a function of themselves, but is still a function, it
-may vary and is determined by the components, not vice versa. When working with
-computation, we should focus on the same types of general abstractions. When
-designing something, worry only about the composition of the processes and data,
-not how in the real world we instantiate those processes and data. The real
-world is **very** important, but is necessarily a secondary concern.
-
-A specification is a real description of some data transformation process, but
-it does not transform data. In order to transform data, the specification must
-be made executable. A primary goal in developing programming languages is to
-make the specification form as close to the executable form as possible.
-
-The largest risk in software development is incorrect requirements. If one could
-write executable specifications, then this risk would be nearly non-existent,
-because one could simply write the requirements out and then immediately see if
-they are what was really desired. The programmers (or the translators) would be
-only needed on occasion, when it came time to figure out the specific
-requirements for the program's execution, in particular space/time usages and
-the real world resources to support those.
-
-There will always be some translation required. Execution requires one to take
-into account the environment and available resources. Execution time and space
-are always issues, as are the underlying data structures and algorithms. Of
-course, given some specification, these execution properties could be tweaked.
-Then some specification could be run in different contexts without modifying it.
-In most current software, this separation is not pragmatic. But it is ideal.
+[TODO]
 
 
 ### Naturality
