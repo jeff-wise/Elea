@@ -22,15 +22,17 @@ how to interpret structures, human vs machine.
 ambiguity.
 more examples of trouble between human machine interps.
 project management. risk of changing requirements. agile.
-models for defining structures. math vs architectural, etc..
-look at biology, physics, etc..
 how does human mind work, human hands are the human mind.
 refine goal: ideally, want human interpretable machine language.
 that is, intutive to humans, but still prcise and unambiguous
 no perfect easy solution.
 that way anyone can describe program and that description can
 be given to a computer without major modification.
-talk about solution.
+talk about how other languages try to accomplish that. oop, functional languages
+etc
+models for defining structures. math vs architectural, etc..
+look at biology, physics, etc..
+talk about Elea's solution.
 concurrenct. reactive. simple.
 
 

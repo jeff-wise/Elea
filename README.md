@@ -3,10 +3,23 @@
 *Preliminary notes* on the language design. Concepts are still changing, so
 descriptions are purposely vague and brief.
 
+Elea is a programming language for anyone. Like object-oriented programming, it
+appeals to human intuition. It's *natural* specifications abstract away from
+machine architectures and mathematics, providing a reactive framework for
+defining data in terms of systems and behaviors. Its programming structures
+resemble biological processes more closely than traditional computational
+processes. Most importantly, it is a fully integrated, general purpose language.
+All systems are automatically given web APIs. Values and systems are given
+UUIDs, such that systems are automatically distributed.  All processes are
+concurrent. Programs are universal by default, just like any real world
+constructions. Elea is a very different, unconvential language with the ultimate
+goal of enabling anyone to program and construct complex software with minimal
+difficulty.
+
 ## How to Run
 
-Right now there is not much to see. All the ideas are still mostly within the
-source code.
+Right now there is not much to see. Most of the ideas are still mostly within
+the source code.
 
 #####Test Suite
 `cabal run testsuite`
@@ -83,7 +96,7 @@ potentials, where those ideas are best represented. It would be silly to have to
 define an equation with receptors and APs. It also allows for a more fluid
 interface where a user will be able to write an equation with an equation editor
 designed with the mathematical domain in mind. That interface would be separate
-from the others and could be tuned specifical to its purpose. For purposes of
+from the others and could be tuned specifically to its purpose. For purposes of
 data flow, an equation just maps input to output -- it's a transformer. If parts
 or intermediate results of that equation were needed by other processes, then it
 would be factored out into separate equations, where those values would be
