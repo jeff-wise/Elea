@@ -20,6 +20,7 @@ strongly typed. interfaced.
 reactive behaviors
 
 
+
 -- summary paragraph of language attributes
 
 ## Naturality
@@ -43,6 +44,16 @@ look at biology, physics, etc..
 talk about Elea's solution.
 concurrenct. reactive. simple.
 
+the challenge of the programmer is two fold. Must understand the machine
+specifications, not always easy to translate human ideas into something that the
+machine can interpret. very often non-trivial and difficult. And that's only
+when the human ideas are correct. Often times the ambiguity can lead to
+incorrect specifications, and all the work done in translating is lost because
+the wrong thing was translated. biggest risk of software is these changing
+requirements. can be eliminated if translation is trivial. Make the job of the
+programmer more like an artist than a translator. Gets to express ideas
+directly, does not have to indirectly express ideas and spend so much time on
+understanding how the machine works. Spend time with human ideas.
 
 ## Integration
 
