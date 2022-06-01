@@ -11,9 +11,6 @@ done [here](https://github.com/elealang).
 <br/>
 <br/>
 <br/>
-<br/>
-<br/>
-<br/>
 
 
 # Elea Language Specification (Notes)
