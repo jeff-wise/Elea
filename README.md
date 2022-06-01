@@ -1,3 +1,21 @@
+
+## :speech_balloon: Deprecated Side-Project
+
+This project is an early version of my life-long goal to improve
+software development and the human relationship to software by
+innovating in programming language design. All new work is being
+done [here](https://github.com/elealang).
+
+**View the original README below** :arrow_heading_down:
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+
 # Elea Language Specification (Notes)
 
 *Preliminary notes* on the language design. Concepts are still changing, so
